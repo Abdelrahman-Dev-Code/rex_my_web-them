@@ -1,0 +1,78 @@
+import { getTranslations } from "next-intl/server";
+import { Code2, Palette, Rocket, Search, ShieldCheck, Sparkles } from "lucide-react";
+import { SectionHeading } from "@/components/ui/section-heading";
+import { Reveal } from "@/components/motion/reveal";
+import { pickLocale, type HomeContent } from "@/lib/data";
+import type { Service } from "@/content/site";
+
+const icons = {
+  code: Code2,
+  palette: Palette,
+  rocket: Rocket,
+  search: Search,
+  shield: ShieldCheck,
+  sparkles: Sparkles,
+} satisfies Record<Service["icon"], typeof Code2>;
+
+export async function Services({ content }: { content: HomeContent }) {
+  const { locale } = content;
+  if (content.services.length === 0) return null;
+
+  const t = await getTranslations({ locale, namespace: "services" });
+  const useBento = content.services.length === 6;
+
+  return (
+    <section id="services" className="section scroll-mt-20">
+      <div className="container-page flex flex-col gap-12">
+        <Reveal>
+          <SectionHeading eyebrow={t("eyebrow")} title={t("title")} subtitle={t("subtitle")} />
+        </Reveal>
+
+        <ul
+          className={
+            useBento
+              ? "grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
+              : "grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
+          }
+        >
+          {content.services.map((service, index) => {
+            const Icon = icons[service.icon];
+            const isFeatured = useBento && (index === 0 || index === 5);
+
+            return (
+              <li
+                key={`${service.icon}-${index}`}
+                className={isFeatured ? "h-full sm:col-span-2 lg:col-span-2" : "h-full"}
+              >
+                <Reveal delay={index * 0.05} y={32} className="h-full">
+                  <div className="gradient-border surface-card group relative flex h-full flex-col gap-4 overflow-hidden p-6 transition-colors duration-300 hover:border-primary/40 hover:bg-surface-2">
+                    <span
+                      aria-hidden
+                      className="absolute inset-x-6 top-0 h-px scale-x-0 bg-gradient-to-r from-transparent via-primary to-transparent transition-transform duration-500 group-hover:scale-x-100"
+                    />
+                    <div className="flex items-start justify-between gap-3">
+                      <span className="grid size-11 place-items-center rounded-xl border border-border bg-bg-elevated text-primary transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:scale-105">
+                        <Icon className="size-5" aria-hidden />
+                      </span>
+                      <span
+                        aria-hidden
+                        className="text-xs font-medium tabular-nums text-muted/60"
+                        dir="ltr"
+                      >
+                        {String(index + 1).padStart(2, "0")}
+                      </span>
+                    </div>
+                    <h3 className="text-lg font-semibold">{pickLocale(service.title, locale)}</h3>
+                    <p className="text-sm leading-relaxed text-muted">
+                      {pickLocale(service.description, locale)}
+                    </p>
+                  </div>
+                </Reveal>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+    </section>
+  );
+}

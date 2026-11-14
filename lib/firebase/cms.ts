@@ -1,0 +1,500 @@
+import {
+  collection,
+  deleteDoc,
+  doc,
+  getDoc,
+  getDocs,
+  orderBy,
+  query,
+  serverTimestamp,
+  setDoc,
+  updateDoc,
+  writeBatch,
+  type Timestamp,
+} from "firebase/firestore";
+import {
+  aboutMission,
+  aboutSecondary,
+  faqs as defaultFaqs,
+  legalContent as defaultLegal,
+  posts as defaultPosts,
+  process as defaultProcess,
+  projects as defaultProjects,
+  sectors as defaultSectors,
+  services as defaultServices,
+  site as defaultSite,
+  stats as defaultStats,
+  team as defaultTeam,
+  techStack as defaultTechStack,
+  testimonials as defaultTestimonials,
+  type Faq,
+  type LegalPage,
+  type Localized,
+  type Member,
+  type Post,
+  type Project,
+  type Sector,
+  type Service,
+  type SiteMeta,
+  type Stat,
+  type Step,
+  type Tech,
+  type Testimonial,
+} from "@/content/site";
+import { db, handleFirestoreError, OperationType } from "./client";
+
+export type SiteSettingsDoc = SiteMeta & {
+  aboutMission?: Localized;
+  aboutSecondary?: Localized;
+  stats?: Stat[];
+  process?: Step[];
+};
+
+export type ServiceDoc = Service & { id: string; order: number };
+export type ProjectDoc = Project;
+export type PostDoc = Post;
+export type MemberDoc = Member & { order: number };
+export type TestimonialDoc = Testimonial & { id: string; order: number };
+export type SectorDoc = Sector & { id: string; order: number };
+export type TechDoc = Tech & { id: string };
+export type FaqDoc = Faq & { id: string; order: number };
+export type LegalDoc = LegalPage & { key: "privacy" | "terms" };
+
+export type ContactStatus = "new" | "in_review" | "replied" | "archived";
+
+export type ContactSubmission = {
+  id: string;
+  name: string;
+  email: string;
+  company: string;
+  message: string;
+  status: ContactStatus;
+  notes: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+function formatTimestamp(value: unknown): string {
+  if (!value) return new Date().toISOString();
+  if (typeof value === "string") return value;
+  if (typeof (value as Timestamp).toDate === "function") {
+    return (value as Timestamp).toDate().toISOString();
+  }
+  return new Date().toISOString();
+}
+
+export async function fetchSiteSettingsFromDb(): Promise<SiteSettingsDoc | null> {
+  try {
+    const snap = await getDoc(doc(db, "siteSettings", "main"));
+    if (!snap.exists()) return null;
+    const data = snap.data();
+    return {
+      name: data.name,
+      legalName: data.legalName,
+      tagline: data.tagline,
+      shortTagline: data.shortTagline,
+      email: data.email,
+      whatsapp: data.whatsapp,
+      location: data.location,
+      socials: Array.isArray(data.socials) ? data.socials : defaultSite.socials,
+      aboutMission: data.aboutMission ?? aboutMission,
+      aboutSecondary: data.aboutSecondary ?? aboutSecondary,
+      stats: Array.isArray(data.stats) ? data.stats : defaultStats,
+      process: Array.isArray(data.process) ? data.process : defaultProcess,
+    };
+  } catch {
+    return null;
+  }
+}
+
+export async function fetchCollectionFromDb<T>(
+  collectionName: string,
+  orderField?: string,
+  direction: "asc" | "desc" = "asc",
+): Promise<(T & { id: string })[]> {
+  try {
+    const ref = collection(db, collectionName);
+    const q = orderField ? query(ref, orderBy(orderField, direction)) : ref;
+    const snap = await getDocs(q);
+    return snap.docs.map((d) => ({
+      ...(d.data() as T),
+      id: d.id,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+export async function fetchDocByIdFromDb<T>(
+  collectionName: string,
+  id: string,
+): Promise<T | null> {
+  try {
+    const snap = await getDoc(doc(db, collectionName, id));
+    if (!snap.exists()) return null;
+    return snap.data() as T;
+  } catch {
+    return null;
+  }
+}
+
+export async function saveSiteSettings(payload: SiteSettingsDoc): Promise<void> {
+  const path = "siteSettings/main";
+  try {
+    const data: Record<string, unknown> = {
+      name: payload.name,
+      legalName: payload.legalName,
+      tagline: payload.tagline,
+      shortTagline: payload.shortTagline,
+      email: payload.email.trim(),
+      whatsapp: payload.whatsapp.trim(),
+      location: payload.location,
+      socials: payload.socials.slice(0, 10),
+      updatedAt: serverTimestamp(),
+    };
+    if (payload.aboutMission) data.aboutMission = payload.aboutMission;
+    if (payload.aboutSecondary) data.aboutSecondary = payload.aboutSecondary;
+    if (Array.isArray(payload.stats)) {
+      data.stats = payload.stats.slice(0, 8).map((item) => ({
+        value: item.value.trim(),
+        suffix: item.suffix?.trim() ?? "",
+        label: item.label,
+      }));
+    }
+    if (Array.isArray(payload.process)) {
+      data.process = payload.process.slice(0, 8).map((item) => ({
+        number: item.number.trim(),
+        title: item.title,
+        description: item.description,
+      }));
+    }
+    await setDoc(doc(db, "siteSettings", "main"), data);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
+  }
+}
+
+export async function saveService(id: string, payload: Omit<ServiceDoc, "id">): Promise<void> {
+  const path = `services/${id}`;
+  try {
+    await setDoc(doc(db, "services", id), {
+      order: Number(payload.order) || 0,
+      icon: payload.icon,
+      title: payload.title,
+      description: payload.description,
+      updatedAt: serverTimestamp(),
+    });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
+  }
+}
+
+export async function saveProject(payload: Project): Promise<void> {
+  const path = `projects/${payload.slug}`;
+  try {
+    await setDoc(doc(db, "projects", payload.slug), {
+      slug: payload.slug,
+      title: payload.title,
+      summary: payload.summary,
+      category: payload.category,
+      year: payload.year,
+      client: payload.client,
+      role: payload.role,
+      duration: payload.duration,
+      challenge: payload.challenge,
+      solution: payload.solution,
+      results: payload.results.slice(0, 10),
+      stack: payload.stack.slice(0, 20),
+      placeholder: Boolean(payload.placeholder),
+      updatedAt: serverTimestamp(),
+    });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
+  }
+}
+
+export async function savePost(payload: Post): Promise<void> {
+  const path = `posts/${payload.slug}`;
+  try {
+    await setDoc(doc(db, "posts", payload.slug), {
+      slug: payload.slug,
+      title: payload.title,
+      excerpt: payload.excerpt,
+      tag: payload.tag,
+      date: payload.date,
+      readingMinutes: Number(payload.readingMinutes) || 1,
+      body: payload.body.slice(0, 50),
+      placeholder: Boolean(payload.placeholder),
+      updatedAt: serverTimestamp(),
+    });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
+  }
+}
+
+export async function saveMember(payload: MemberDoc): Promise<void> {
+  const path = `team/${payload.slug}`;
+  try {
+    const data: Record<string, unknown> = {
+      slug: payload.slug,
+      order: Number(payload.order) || 0,
+      initials: payload.initials.slice(0, 6),
+      role: payload.role,
+      focus: payload.focus,
+      responsibilities: payload.responsibilities.slice(0, 15),
+      stack: payload.stack.slice(0, 20),
+      placeholder: Boolean(payload.placeholder),
+      updatedAt: serverTimestamp(),
+    };
+    if (payload.name?.ar?.trim() && payload.name?.en?.trim()) {
+      data.name = { ar: payload.name.ar.trim(), en: payload.name.en.trim() };
+    }
+    await setDoc(doc(db, "team", payload.slug), data);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
+  }
+}
+
+export async function saveTech(id: string, payload: Tech): Promise<void> {
+  const path = `techStack/${id}`;
+  try {
+    await setDoc(doc(db, "techStack", id), {
+      name: payload.name,
+      group: payload.group,
+      category: payload.category,
+      description: payload.description,
+      accent: payload.accent,
+      updatedAt: serverTimestamp(),
+    });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
+  }
+}
+
+export async function saveFaq(id: string, payload: Omit<FaqDoc, "id">): Promise<void> {
+  const path = `faqs/${id}`;
+  try {
+    await setDoc(doc(db, "faqs", id), {
+      order: Number(payload.order) || 0,
+      q: payload.q,
+      a: payload.a,
+      updatedAt: serverTimestamp(),
+    });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
+  }
+}
+
+export async function saveTestimonial(
+  id: string,
+  payload: Omit<TestimonialDoc, "id">,
+): Promise<void> {
+  const path = `testimonials/${id}`;
+  try {
+    await setDoc(doc(db, "testimonials", id), {
+      order: Number(payload.order) || 0,
+      quote: payload.quote,
+      role: payload.role,
+      initials: payload.initials.slice(0, 6),
+      placeholder: Boolean(payload.placeholder),
+      updatedAt: serverTimestamp(),
+    });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
+  }
+}
+
+export async function saveSector(id: string, payload: Omit<SectorDoc, "id">): Promise<void> {
+  const path = `sectors/${id}`;
+  try {
+    await setDoc(doc(db, "sectors", id), {
+      order: Number(payload.order) || 0,
+      icon: payload.icon,
+      label: payload.label,
+      updatedAt: serverTimestamp(),
+    });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
+  }
+}
+
+export async function saveLegal(key: "privacy" | "terms", payload: LegalPage): Promise<void> {
+  const path = `legal/${key}`;
+  try {
+    await setDoc(doc(db, "legal", key), {
+      key,
+      updated: payload.updated,
+      notice: payload.notice,
+      intro: payload.intro,
+      sections: payload.sections.slice(0, 20),
+      updatedAt: serverTimestamp(),
+    });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
+  }
+}
+
+export async function deleteCmsDocument(collectionName: string, id: string): Promise<void> {
+  const path = `${collectionName}/${id}`;
+  try {
+    await deleteDoc(doc(db, collectionName, id));
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, path);
+  }
+}
+
+export async function updateContactSubmission(
+  id: string,
+  status: ContactStatus,
+  notes: string,
+): Promise<void> {
+  const path = `contactSubmissions/${id}`;
+  try {
+    await updateDoc(doc(db, "contactSubmissions", id), {
+      status,
+      notes: notes.slice(0, 1000),
+      updatedAt: serverTimestamp(),
+    });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, path);
+  }
+}
+
+export async function deleteContactSubmission(id: string): Promise<void> {
+  const path = `contactSubmissions/${id}`;
+  try {
+    await deleteDoc(doc(db, "contactSubmissions", id));
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, path);
+  }
+}
+
+export function mapContactDoc(id: string, data: Record<string, unknown>): ContactSubmission {
+  return {
+    id,
+    name: String(data.name ?? ""),
+    email: String(data.email ?? ""),
+    company: String(data.company ?? ""),
+    message: String(data.message ?? ""),
+    status: (data.status as ContactStatus) ?? "new",
+    notes: String(data.notes ?? ""),
+    createdAt: formatTimestamp(data.createdAt),
+    updatedAt: formatTimestamp(data.updatedAt),
+  };
+}
+
+function slugifyId(value: string, fallbackPrefix: string, index: number): string {
+  const cleaned = value
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return cleaned || `${fallbackPrefix}-${index + 1}`;
+}
+
+export async function seedDefaultContentToFirestore(): Promise<{ count: number }> {
+  try {
+    const batch = writeBatch(db);
+    let count = 0;
+
+    batch.set(doc(db, "siteSettings", "main"), {
+      ...defaultSite,
+      aboutMission,
+      aboutSecondary,
+      stats: defaultStats,
+      process: defaultProcess,
+      updatedAt: serverTimestamp(),
+    });
+    count++;
+
+    defaultServices.forEach((service, index) => {
+      batch.set(doc(db, "services", `service-${index + 1}`), {
+        order: index + 1,
+        icon: service.icon,
+        title: service.title,
+        description: service.description,
+        updatedAt: serverTimestamp(),
+      });
+      count++;
+    });
+
+    defaultProjects.forEach((project) => {
+      batch.set(doc(db, "projects", project.slug), {
+        ...project,
+        updatedAt: serverTimestamp(),
+      });
+      count++;
+    });
+
+    defaultPosts.forEach((post) => {
+      batch.set(doc(db, "posts", post.slug), {
+        ...post,
+        updatedAt: serverTimestamp(),
+      });
+      count++;
+    });
+
+    defaultTeam.forEach((member, index) => {
+      batch.set(doc(db, "team", member.slug), {
+        ...member,
+        order: index + 1,
+        updatedAt: serverTimestamp(),
+      });
+      count++;
+    });
+
+    defaultTestimonials.forEach((testimonial, index) => {
+      batch.set(doc(db, "testimonials", `testimonial-${index + 1}`), {
+        ...testimonial,
+        order: index + 1,
+        updatedAt: serverTimestamp(),
+      });
+      count++;
+    });
+
+    defaultSectors.forEach((sector, index) => {
+      batch.set(doc(db, "sectors", `sector-${index + 1}`), {
+        ...sector,
+        order: index + 1,
+        updatedAt: serverTimestamp(),
+      });
+      count++;
+    });
+
+    defaultTechStack.forEach((tech, index) => {
+      const id = slugifyId(tech.name, "tech", index);
+      batch.set(doc(db, "techStack", id), {
+        ...tech,
+        updatedAt: serverTimestamp(),
+      });
+      count++;
+    });
+
+    defaultFaqs.forEach((faq, index) => {
+      batch.set(doc(db, "faqs", `faq-${index + 1}`), {
+        ...faq,
+        order: index + 1,
+        updatedAt: serverTimestamp(),
+      });
+      count++;
+    });
+
+    batch.set(doc(db, "legal", "privacy"), {
+      key: "privacy",
+      ...defaultLegal.privacy,
+      updatedAt: serverTimestamp(),
+    });
+    count++;
+
+    batch.set(doc(db, "legal", "terms"), {
+      key: "terms",
+      ...defaultLegal.terms,
+      updatedAt: serverTimestamp(),
+    });
+    count++;
+
+    await batch.commit();
+    return { count };
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, "seed");
+  }
+}

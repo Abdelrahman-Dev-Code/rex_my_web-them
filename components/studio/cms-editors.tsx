@@ -1,0 +1,1850 @@
+"use client";
+
+import { useState } from "react";
+import type { User } from "firebase/auth";
+import { Plus, Save, Trash2 } from "lucide-react";
+import type {
+  LegalPage,
+  Post,
+  Project,
+  Sector,
+  Service,
+  Tech,
+} from "@/content/site";
+import {
+  deleteCmsDocument,
+  saveFaq,
+  saveLegal,
+  saveMember,
+  savePost,
+  saveProject,
+  saveSector,
+  saveService,
+  saveSiteSettings,
+  saveTech,
+  saveTestimonial,
+  type FaqDoc,
+  type MemberDoc,
+  type SectorDoc,
+  type ServiceDoc,
+  type SiteSettingsDoc,
+  type TechDoc,
+  type TestimonialDoc,
+} from "@/lib/firebase/cms";
+import { buttonClass } from "@/components/ui/button";
+import {
+  ConfirmDeleteButton,
+  fieldInputClass,
+  hasLocalizedText,
+  LocalizedFieldPair,
+  slugifyAscii,
+  triggerRevalidation,
+} from "./studio-helpers";
+
+type NotifyFn = (msg: string, isError?: boolean) => void;
+
+export function SiteSettingsEditor({
+  initial,
+  user,
+  locale,
+  onSaved,
+  notify,
+}: {
+  initial: SiteSettingsDoc;
+  user: User | null;
+  locale: string;
+  onSaved: () => Promise<void>;
+  notify: NotifyFn;
+}) {
+  const [form, setForm] = useState<SiteSettingsDoc>(initial);
+  const [saving, setSaving] = useState(false);
+  const ar = locale === "ar";
+
+  const statsList = form.stats ?? [];
+  const processList = form.process ?? [];
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const validStats = statsList.every(
+      (item) => item.value.trim().length >= 1 && hasLocalizedText(item.label),
+    );
+    const validProcess = processList.every(
+      (item) =>
+        item.number.trim().length >= 1 &&
+        hasLocalizedText(item.title) &&
+        hasLocalizedText(item.description),
+    );
+
+    if (
+      !hasLocalizedText(form.name) ||
+      !hasLocalizedText(form.legalName) ||
+      !hasLocalizedText(form.tagline) ||
+      !hasLocalizedText(form.shortTagline) ||
+      !hasLocalizedText(form.location) ||
+      form.email.trim().length < 5 ||
+      form.whatsapp.trim().length < 6 ||
+      !validStats ||
+      !validProcess
+    ) {
+      notify(
+        ar
+          ? "تأكد من ملء جميع الحقول الأساسية والإحصائيات وخطوات العمل بالعربية والإنجليزية وبريد ورقم واتساب صحيحين."
+          : "Please complete all required Arabic and English fields, stats, process steps, email, and WhatsApp number.",
+        true,
+      );
+      return;
+    }
+
+    setSaving(true);
+    try {
+      await saveSiteSettings(form);
+      await triggerRevalidation(user, ["site"]);
+      await onSaved();
+      notify(ar ? "تم حفظ إعدادات الموقع" : "Site settings saved");
+    } catch {
+      notify(ar ? "فشل حفظ الإعدادات" : "Failed to save settings", true);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSave} className="flex flex-col gap-6 rounded-2xl border border-border bg-surface p-6">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
+        <h2 className="text-lg font-semibold">{ar ? "إعدادات الهوية والتواصل" : "Brand & Contact Settings"}</h2>
+        <button type="submit" disabled={saving} className={buttonClass("primary", "sm")}>
+          <Save className="size-4" aria-hidden />
+          {saving ? (ar ? "جارٍ الحفظ…" : "Saving…") : ar ? "حفظ التغييرات" : "Save changes"}
+        </button>
+      </div>
+
+      <LocalizedFieldPair
+        label={ar ? "اسم العلامة" : "Brand name"}
+        value={form.name}
+        onChange={(name) => setForm({ ...form, name })}
+      />
+      <LocalizedFieldPair
+        label={ar ? "الاسم القانوني" : "Legal name"}
+        value={form.legalName}
+        onChange={(legalName) => setForm({ ...form, legalName })}
+      />
+      <LocalizedFieldPair
+        label={ar ? "الشعار الرئيسي" : "Tagline"}
+        value={form.tagline}
+        onChange={(tagline) => setForm({ ...form, tagline })}
+      />
+      <LocalizedFieldPair
+        label={ar ? "الوصف المختصر" : "Short tagline"}
+        value={form.shortTagline}
+        onChange={(shortTagline) => setForm({ ...form, shortTagline })}
+      />
+      <LocalizedFieldPair
+        label={ar ? "الموقع" : "Location"}
+        value={form.location}
+        onChange={(location) => setForm({ ...form, location })}
+      />
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="flex flex-col gap-1.5">
+          <label className="text-xs font-medium text-muted">{ar ? "البريد الإلكتروني" : "Email"}</label>
+          <input
+            type="email"
+            dir="ltr"
+            value={form.email}
+            onChange={(e) => setForm({ ...form, email: e.target.value })}
+            className={fieldInputClass}
+          />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <label className="text-xs font-medium text-muted">{ar ? "رقم الواتساب (بدون +)" : "WhatsApp (digits only)"}</label>
+          <input
+            type="text"
+            dir="ltr"
+            value={form.whatsapp}
+            onChange={(e) => setForm({ ...form, whatsapp: e.target.value })}
+            className={fieldInputClass}
+          />
+        </div>
+      </div>
+
+      {form.aboutMission ? (
+        <LocalizedFieldPair
+          label={ar ? "رسالة صفحة من نحن" : "About Mission"}
+          value={form.aboutMission}
+          onChange={(aboutMission) => setForm({ ...form, aboutMission })}
+          multiline
+        />
+      ) : null}
+
+      {form.aboutSecondary ? (
+        <LocalizedFieldPair
+          label={ar ? "النص الثانوي لصفحة من نحن" : "About Secondary Copy"}
+          value={form.aboutSecondary}
+          onChange={(aboutSecondary) => setForm({ ...form, aboutSecondary })}
+          multiline
+        />
+      ) : null}
+
+      <div className="flex flex-col gap-3 border-t border-border pt-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-medium">{ar ? "إحصائيات الرئيسية وصفحة من نحن" : "Home & About Stats"}</h3>
+          <button
+            type="button"
+            disabled={statsList.length >= 8}
+            onClick={() =>
+              setForm({
+                ...form,
+                stats: [...statsList, { value: "10", suffix: "+", label: { ar: "", en: "" } }],
+              })
+            }
+            className={buttonClass("outline", "sm")}
+          >
+            <Plus className="size-3.5" aria-hidden />
+            {ar ? "إضافة رقم" : "Add stat"}
+          </button>
+        </div>
+        {statsList.map((stat, idx) => (
+          <div key={idx} className="flex flex-col gap-3 rounded-xl border border-border bg-bg-elevated p-3">
+            <div className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
+              <input
+                type="text"
+                dir="ltr"
+                value={stat.value}
+                onChange={(e) => {
+                  const next = [...statsList];
+                  next[idx] = { ...next[idx], value: e.target.value };
+                  setForm({ ...form, stats: next });
+                }}
+                className={fieldInputClass}
+                placeholder={ar ? "القيمة (مثل 48)" : "Value (e.g. 48)"}
+              />
+              <input
+                type="text"
+                dir="ltr"
+                value={stat.suffix ?? ""}
+                onChange={(e) => {
+                  const next = [...statsList];
+                  next[idx] = { ...next[idx], suffix: e.target.value };
+                  setForm({ ...form, stats: next });
+                }}
+                className={fieldInputClass}
+                placeholder={ar ? "اللاحقة (+ أو %)" : "Suffix (+ or %)"}
+              />
+              <button
+                type="button"
+                onClick={() => setForm({ ...form, stats: statsList.filter((_, i) => i !== idx) })}
+                aria-label="Remove stat"
+                className="inline-flex size-10 items-center justify-center rounded-lg border border-border text-muted hover:text-danger"
+              >
+                <Trash2 className="size-4" aria-hidden />
+              </button>
+            </div>
+            <LocalizedFieldPair
+              label={ar ? `تسمية الإحصائية #${idx + 1}` : `Stat #${idx + 1} label`}
+              value={stat.label}
+              onChange={(label) => {
+                const next = [...statsList];
+                next[idx] = { ...next[idx], label };
+                setForm({ ...form, stats: next });
+              }}
+            />
+          </div>
+        ))}
+      </div>
+
+      <div className="flex flex-col gap-3 border-t border-border pt-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-medium">{ar ? "خطوات العمل (منهجية التنفيذ)" : "Process Steps"}</h3>
+          <button
+            type="button"
+            disabled={processList.length >= 8}
+            onClick={() =>
+              setForm({
+                ...form,
+                process: [
+                  ...processList,
+                  {
+                    number: String(processList.length + 1).padStart(2, "0"),
+                    title: { ar: "", en: "" },
+                    description: { ar: "", en: "" },
+                  },
+                ],
+              })
+            }
+            className={buttonClass("outline", "sm")}
+          >
+            <Plus className="size-3.5" aria-hidden />
+            {ar ? "إضافة خطوة" : "Add step"}
+          </button>
+        </div>
+        {processList.map((step, idx) => (
+          <div key={idx} className="flex flex-col gap-3 rounded-xl border border-border bg-bg-elevated p-3">
+            <div className="flex items-center justify-between gap-2">
+              <input
+                type="text"
+                dir="ltr"
+                value={step.number}
+                onChange={(e) => {
+                  const next = [...processList];
+                  next[idx] = { ...next[idx], number: e.target.value };
+                  setForm({ ...form, process: next });
+                }}
+                className={`${fieldInputClass} max-w-28`}
+                placeholder="01"
+              />
+              <button
+                type="button"
+                onClick={() => setForm({ ...form, process: processList.filter((_, i) => i !== idx) })}
+                aria-label="Remove step"
+                className="inline-flex size-10 items-center justify-center rounded-lg border border-border text-muted hover:text-danger"
+              >
+                <Trash2 className="size-4" aria-hidden />
+              </button>
+            </div>
+            <LocalizedFieldPair
+              label={ar ? `عنوان الخطوة #${idx + 1}` : `Step #${idx + 1} title`}
+              value={step.title}
+              onChange={(title) => {
+                const next = [...processList];
+                next[idx] = { ...next[idx], title };
+                setForm({ ...form, process: next });
+              }}
+            />
+            <LocalizedFieldPair
+              label={ar ? `وصف الخطوة #${idx + 1}` : `Step #${idx + 1} description`}
+              value={step.description}
+              onChange={(description) => {
+                const next = [...processList];
+                next[idx] = { ...next[idx], description };
+                setForm({ ...form, process: next });
+              }}
+              multiline
+            />
+          </div>
+        ))}
+      </div>
+
+      <div className="flex flex-col gap-3 border-t border-border pt-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-medium">{ar ? "روابط التواصل" : "Social Links"}</h3>
+          <button
+            type="button"
+            disabled={form.socials.length >= 10}
+            onClick={() => setForm({ ...form, socials: [...form.socials, { label: "Website", href: "https://" }] })}
+            className={buttonClass("outline", "sm")}
+          >
+            <Plus className="size-3.5" aria-hidden />
+            {ar ? "إضافة رابط" : "Add link"}
+          </button>
+        </div>
+        {form.socials.map((social, idx) => (
+          <div key={idx} className="grid gap-2 sm:grid-cols-[1fr_2fr_auto]">
+            <input
+              type="text"
+              dir="ltr"
+              value={social.label}
+              onChange={(e) => {
+                const next = [...form.socials];
+                next[idx] = { ...next[idx], label: e.target.value };
+                setForm({ ...form, socials: next });
+              }}
+              className={fieldInputClass}
+              placeholder="Label"
+            />
+            <input
+              type="url"
+              dir="ltr"
+              value={social.href}
+              onChange={(e) => {
+                const next = [...form.socials];
+                next[idx] = { ...next[idx], href: e.target.value };
+                setForm({ ...form, socials: next });
+              }}
+              className={fieldInputClass}
+              placeholder="https://..."
+            />
+            <button
+              type="button"
+              onClick={() => setForm({ ...form, socials: form.socials.filter((_, i) => i !== idx) })}
+              aria-label="Remove"
+              className="inline-flex size-10 items-center justify-center rounded-lg border border-border text-muted hover:text-danger"
+            >
+              <Trash2 className="size-4" aria-hidden />
+            </button>
+          </div>
+        ))}
+      </div>
+    </form>
+  );
+}
+
+export function ServicesEditor({
+  items,
+  user,
+  locale,
+  onSaved,
+  notify,
+}: {
+  items: ServiceDoc[];
+  user: User | null;
+  locale: string;
+  onSaved: () => Promise<void>;
+  notify: NotifyFn;
+}) {
+  const ar = locale === "ar";
+  const [editing, setEditing] = useState<ServiceDoc | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const startNew = () =>
+    setEditing({
+      id: `service-${Date.now().toString(36)}`,
+      order: items.length + 1,
+      icon: "code",
+      title: { ar: "", en: "" },
+      description: { ar: "", en: "" },
+    });
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editing) return;
+    if (!hasLocalizedText(editing.title) || !hasLocalizedText(editing.description)) {
+      notify(ar ? "أدخل العنوان والوصف باللغتين" : "Title and description are required in both languages", true);
+      return;
+    }
+
+    setSaving(true);
+    try {
+      await saveService(editing.id, {
+        order: editing.order,
+        icon: editing.icon,
+        title: editing.title,
+        description: editing.description,
+      });
+      await triggerRevalidation(user, ["services"]);
+      await onSaved();
+      setEditing(null);
+      notify(ar ? "تم حفظ الخدمة" : "Service saved");
+    } catch {
+      notify(ar ? "تعذر حفظ الخدمة" : "Failed to save service", true);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      await deleteCmsDocument("services", id);
+      await triggerRevalidation(user, ["services"]);
+      await onSaved();
+      notify(ar ? "تم حذف الخدمة" : "Service deleted");
+    } catch {
+      notify(ar ? "تعذر حذف الخدمة" : "Failed to delete service", true);
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold">{ar ? "الخدمات" : "Services"}</h2>
+        <button type="button" onClick={startNew} className={buttonClass("primary", "sm")}>
+          <Plus className="size-4" aria-hidden />
+          {ar ? "خدمة جديدة" : "New service"}
+        </button>
+      </div>
+
+      {editing ? (
+        <form onSubmit={handleSave} className="flex flex-col gap-4 rounded-2xl border border-border bg-surface p-6">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-medium text-muted">{ar ? "الأيقونة" : "Icon"}</label>
+              <select
+                value={editing.icon}
+                onChange={(e) => setEditing({ ...editing, icon: e.target.value as Service["icon"] })}
+                className={fieldInputClass}
+              >
+                {(["code", "palette", "rocket", "search", "shield", "sparkles"] as const).map((ic) => (
+                  <option key={ic} value={ic}>{ic}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-medium text-muted">{ar ? "الترتيب" : "Order"}</label>
+              <input
+                type="number"
+                value={editing.order}
+                onChange={(e) => setEditing({ ...editing, order: Number(e.target.value) })}
+                className={fieldInputClass}
+              />
+            </div>
+          </div>
+          <LocalizedFieldPair
+            label={ar ? "العنوان" : "Title"}
+            value={editing.title}
+            onChange={(title) => setEditing({ ...editing, title })}
+          />
+          <LocalizedFieldPair
+            label={ar ? "الوصف" : "Description"}
+            value={editing.description}
+            onChange={(description) => setEditing({ ...editing, description })}
+            multiline
+          />
+          <div className="flex items-center gap-2">
+            <button type="submit" disabled={saving} className={buttonClass("primary", "sm")}>
+              <Save className="size-4" aria-hidden />
+              {saving ? (ar ? "جارٍ الحفظ…" : "Saving…") : ar ? "حفظ" : "Save"}
+            </button>
+            <button type="button" onClick={() => setEditing(null)} className={buttonClass("outline", "sm")}>
+              {ar ? "إلغاء" : "Cancel"}
+            </button>
+          </div>
+        </form>
+      ) : null}
+
+      <ul className="grid gap-3 sm:grid-cols-2">
+        {items.map((item) => (
+          <li key={item.id} className="flex items-start justify-between gap-3 rounded-xl border border-border bg-surface p-4">
+            <div className="flex flex-col gap-1">
+              <span className="text-xs text-muted tabular-nums">#{item.order} · {item.icon}</span>
+              <span className="font-medium">{ar ? item.title.ar : item.title.en}</span>
+              <span className="line-clamp-2 text-xs text-muted">{ar ? item.description.ar : item.description.en}</span>
+            </div>
+            <div className="flex shrink-0 items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setEditing(item)}
+                className="rounded-lg border border-border px-2.5 py-1.5 text-xs hover:bg-surface-2"
+              >
+                {ar ? "تعديل" : "Edit"}
+              </button>
+              <ConfirmDeleteButton locale={locale} onConfirm={() => handleDelete(item.id)} />
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+export function ProjectsEditor({
+  items,
+  user,
+  locale,
+  onSaved,
+  notify,
+}: {
+  items: Project[];
+  user: User | null;
+  locale: string;
+  onSaved: () => Promise<void>;
+  notify: NotifyFn;
+}) {
+  const ar = locale === "ar";
+  const [editing, setEditing] = useState<Project | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const startNew = () =>
+    setEditing({
+      slug: `project-${Date.now().toString(36)}`,
+      title: { ar: "", en: "" },
+      summary: { ar: "", en: "" },
+      category: { ar: "منتج رقمي", en: "Digital product" },
+      year: String(new Date().getFullYear()),
+      client: { ar: "", en: "" },
+      role: { ar: "", en: "" },
+      duration: { ar: "6 أسابيع", en: "6 weeks" },
+      challenge: { ar: "", en: "" },
+      solution: { ar: "", en: "" },
+      results: [{ value: "+40%", label: { ar: "تحسن الأداء", en: "Performance gain" } }],
+      stack: ["Next.js", "TypeScript"],
+      placeholder: false,
+    });
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editing) return;
+    if (
+      !hasLocalizedText(editing.title) ||
+      !hasLocalizedText(editing.summary) ||
+      !hasLocalizedText(editing.category) ||
+      !hasLocalizedText(editing.client) ||
+      !hasLocalizedText(editing.role) ||
+      !hasLocalizedText(editing.duration) ||
+      !hasLocalizedText(editing.challenge) ||
+      !hasLocalizedText(editing.solution)
+    ) {
+      notify(
+        ar ? "يرجى استكمال جميع الحقول النصية بالعربية والإنجليزية" : "Please complete all localized project fields",
+        true,
+      );
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const normalizedSlug = slugifyAscii(editing.slug || editing.title.en, "project");
+      const cleanResults = editing.results.filter(
+        (r) => r.value.trim().length > 0 && hasLocalizedText(r.label),
+      );
+      await saveProject({ ...editing, slug: normalizedSlug, results: cleanResults });
+      await triggerRevalidation(user, ["projects"]);
+      await onSaved();
+      setEditing(null);
+      notify(ar ? "تم حفظ المشروع" : "Project saved");
+    } catch {
+      notify(ar ? "تعذر حفظ المشروع" : "Failed to save project", true);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async (slug: string) => {
+    try {
+      await deleteCmsDocument("projects", slug);
+      await triggerRevalidation(user, ["projects"]);
+      await onSaved();
+      notify(ar ? "تم حذف المشروع" : "Project deleted");
+    } catch {
+      notify(ar ? "تعذر حذف المشروع" : "Failed to delete project", true);
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold">{ar ? "المشاريع" : "Projects"}</h2>
+        <button type="button" onClick={startNew} className={buttonClass("primary", "sm")}>
+          <Plus className="size-4" aria-hidden />
+          {ar ? "مشروع جديد" : "New project"}
+        </button>
+      </div>
+
+      {editing ? (
+        <form onSubmit={handleSave} className="flex flex-col gap-4 rounded-2xl border border-border bg-surface p-6">
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-medium text-muted">Slug</label>
+              <input
+                type="text"
+                dir="ltr"
+                value={editing.slug}
+                onChange={(e) => setEditing({ ...editing, slug: e.target.value })}
+                className={fieldInputClass}
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-medium text-muted">{ar ? "السنة" : "Year"}</label>
+              <input
+                type="text"
+                dir="ltr"
+                value={editing.year}
+                onChange={(e) => setEditing({ ...editing, year: e.target.value })}
+                className={fieldInputClass}
+              />
+            </div>
+            <label className="flex items-center gap-2 self-end pb-2 text-sm">
+              <input
+                type="checkbox"
+                checked={editing.placeholder}
+                onChange={(e) => setEditing({ ...editing, placeholder: e.target.checked })}
+              />
+              {ar ? "نموذج توضيحي" : "Placeholder sample"}
+            </label>
+          </div>
+          <LocalizedFieldPair
+            label={ar ? "العنوان" : "Title"}
+            value={editing.title}
+            onChange={(title) => setEditing({ ...editing, title })}
+          />
+          <LocalizedFieldPair
+            label={ar ? "الملخص" : "Summary"}
+            value={editing.summary}
+            onChange={(summary) => setEditing({ ...editing, summary })}
+            multiline
+          />
+          <LocalizedFieldPair
+            label={ar ? "التصنيف" : "Category"}
+            value={editing.category}
+            onChange={(category) => setEditing({ ...editing, category })}
+          />
+          <LocalizedFieldPair
+            label={ar ? "العميل" : "Client"}
+            value={editing.client}
+            onChange={(client) => setEditing({ ...editing, client })}
+          />
+          <LocalizedFieldPair
+            label={ar ? "الدور" : "Role"}
+            value={editing.role}
+            onChange={(role) => setEditing({ ...editing, role })}
+          />
+          <LocalizedFieldPair
+            label={ar ? "المدة" : "Duration"}
+            value={editing.duration}
+            onChange={(duration) => setEditing({ ...editing, duration })}
+          />
+          <LocalizedFieldPair
+            label={ar ? "التحدي" : "Challenge"}
+            value={editing.challenge}
+            onChange={(challenge) => setEditing({ ...editing, challenge })}
+            multiline
+          />
+          <LocalizedFieldPair
+            label={ar ? "الحل" : "Solution"}
+            value={editing.solution}
+            onChange={(solution) => setEditing({ ...editing, solution })}
+            multiline
+          />
+
+          <div className="flex flex-col gap-3 border-t border-border pt-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-muted">{ar ? "النتائج والمؤشرات" : "Results & Metrics"}</span>
+              <button
+                type="button"
+                disabled={editing.results.length >= 10}
+                onClick={() =>
+                  setEditing({
+                    ...editing,
+                    results: [...editing.results, { value: "", label: { ar: "", en: "" } }],
+                  })
+                }
+                className={buttonClass("outline", "sm")}
+              >
+                <Plus className="size-3.5" aria-hidden />
+                {ar ? "إضافة نتيجة" : "Add metric"}
+              </button>
+            </div>
+            {editing.results.map((result, idx) => (
+              <div key={idx} className="grid gap-3 rounded-xl border border-border bg-bg-elevated p-3 sm:grid-cols-[120px_1fr_auto] sm:items-end">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-medium text-muted">{ar ? "القيمة" : "Value"}</label>
+                  <input
+                    type="text"
+                    dir="ltr"
+                    value={result.value}
+                    onChange={(e) => {
+                      const next = [...editing.results];
+                      next[idx] = { ...next[idx], value: e.target.value };
+                      setEditing({ ...editing, results: next });
+                    }}
+                    placeholder="+40%"
+                    className={fieldInputClass}
+                  />
+                </div>
+                <LocalizedFieldPair
+                  label={ar ? "الوصف" : "Label"}
+                  value={result.label}
+                  onChange={(label) => {
+                    const next = [...editing.results];
+                    next[idx] = { ...next[idx], label };
+                    setEditing({ ...editing, results: next });
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() =>
+                    setEditing({
+                      ...editing,
+                      results: editing.results.filter((_, i) => i !== idx),
+                    })
+                  }
+                  aria-label="Remove metric"
+                  className="inline-flex size-10 items-center justify-center rounded-lg border border-border text-muted hover:text-danger"
+                >
+                  <Trash2 className="size-4" aria-hidden />
+                </button>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-medium text-muted">{ar ? "التقنيات (مفصولة بفاصلة)" : "Stack (comma separated)"}</label>
+            <input
+              type="text"
+              dir="ltr"
+              value={editing.stack.join(", ")}
+              onChange={(e) =>
+                setEditing({
+                  ...editing,
+                  stack: e.target.value.split(",").map((s) => s.trim()).filter(Boolean),
+                })
+              }
+              className={fieldInputClass}
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <button type="submit" disabled={saving} className={buttonClass("primary", "sm")}>
+              <Save className="size-4" aria-hidden />
+              {saving ? (ar ? "جارٍ الحفظ…" : "Saving…") : ar ? "حفظ" : "Save"}
+            </button>
+            <button type="button" onClick={() => setEditing(null)} className={buttonClass("outline", "sm")}>
+              {ar ? "إلغاء" : "Cancel"}
+            </button>
+          </div>
+        </form>
+      ) : null}
+
+      <ul className="grid gap-3 sm:grid-cols-2">
+        {items.map((item) => (
+          <li key={item.slug} className="flex items-start justify-between gap-3 rounded-xl border border-border bg-surface p-4">
+            <div className="flex flex-col gap-1">
+              <span className="text-xs text-muted tabular-nums">{item.year} · {ar ? item.category.ar : item.category.en}</span>
+              <span className="font-medium">{ar ? item.title.ar : item.title.en}</span>
+              <span className="line-clamp-2 text-xs text-muted">{ar ? item.summary.ar : item.summary.en}</span>
+            </div>
+            <div className="flex shrink-0 items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setEditing(item)}
+                className="rounded-lg border border-border px-2.5 py-1.5 text-xs hover:bg-surface-2"
+              >
+                {ar ? "تعديل" : "Edit"}
+              </button>
+              <ConfirmDeleteButton locale={locale} onConfirm={() => handleDelete(item.slug)} />
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+export function PostsEditor({
+  items,
+  user,
+  locale,
+  onSaved,
+  notify,
+}: {
+  items: Post[];
+  user: User | null;
+  locale: string;
+  onSaved: () => Promise<void>;
+  notify: NotifyFn;
+}) {
+  const ar = locale === "ar";
+  const [editing, setEditing] = useState<Post | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const startNew = () =>
+    setEditing({
+      slug: `post-${Date.now().toString(36)}`,
+      title: { ar: "", en: "" },
+      excerpt: { ar: "", en: "" },
+      tag: { ar: "هندسة", en: "Engineering" },
+      date: new Date().toISOString().slice(0, 10),
+      readingMinutes: 4,
+      body: [{ ar: "", en: "" }],
+      placeholder: false,
+    });
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editing) return;
+    const validBody = editing.body.filter((p) => hasLocalizedText(p));
+    if (
+      !hasLocalizedText(editing.title) ||
+      !hasLocalizedText(editing.excerpt) ||
+      !hasLocalizedText(editing.tag) ||
+      validBody.length === 0
+    ) {
+      notify(
+        ar ? "العنوان والتصنيف والمقتطف وفقرة واحدة على الأقل مطلوبة باللغتين" : "Title, tag, excerpt, and at least one paragraph are required in both languages",
+        true,
+      );
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const normalizedSlug = slugifyAscii(editing.slug || editing.title.en, "post");
+      await savePost({ ...editing, slug: normalizedSlug, body: validBody });
+      await triggerRevalidation(user, ["posts"]);
+      await onSaved();
+      setEditing(null);
+      notify(ar ? "تم حفظ المقال" : "Post saved");
+    } catch {
+      notify(ar ? "تعذر حفظ المقال" : "Failed to save post", true);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async (slug: string) => {
+    try {
+      await deleteCmsDocument("posts", slug);
+      await triggerRevalidation(user, ["posts"]);
+      await onSaved();
+      notify(ar ? "تم حذف المقال" : "Post deleted");
+    } catch {
+      notify(ar ? "تعذر حذف المقال" : "Failed to delete post", true);
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold">{ar ? "مقالات المدونة" : "Blog Posts"}</h2>
+        <button type="button" onClick={startNew} className={buttonClass("primary", "sm")}>
+          <Plus className="size-4" aria-hidden />
+          {ar ? "مقال جديد" : "New post"}
+        </button>
+      </div>
+
+      {editing ? (
+        <form onSubmit={handleSave} className="flex flex-col gap-4 rounded-2xl border border-border bg-surface p-6">
+          <div className="grid gap-4 sm:grid-cols-4">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-medium text-muted">Slug</label>
+              <input
+                type="text"
+                dir="ltr"
+                value={editing.slug}
+                onChange={(e) => setEditing({ ...editing, slug: e.target.value })}
+                className={fieldInputClass}
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-medium text-muted">{ar ? "التاريخ" : "Date"}</label>
+              <input
+                type="date"
+                dir="ltr"
+                value={editing.date}
+                onChange={(e) => setEditing({ ...editing, date: e.target.value })}
+                className={fieldInputClass}
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-medium text-muted">{ar ? "دقائق القراءة" : "Reading minutes"}</label>
+              <input
+                type="number"
+                min={1}
+                max={60}
+                value={editing.readingMinutes}
+                onChange={(e) => setEditing({ ...editing, readingMinutes: Number(e.target.value) })}
+                className={fieldInputClass}
+              />
+            </div>
+            <label className="flex items-center gap-2 self-end pb-2 text-sm">
+              <input
+                type="checkbox"
+                checked={editing.placeholder}
+                onChange={(e) => setEditing({ ...editing, placeholder: e.target.checked })}
+              />
+              {ar ? "مقال توضيحي" : "Placeholder"}
+            </label>
+          </div>
+          <LocalizedFieldPair
+            label={ar ? "العنوان" : "Title"}
+            value={editing.title}
+            onChange={(title) => setEditing({ ...editing, title })}
+          />
+          <LocalizedFieldPair
+            label={ar ? "التصنيف" : "Tag"}
+            value={editing.tag}
+            onChange={(tag) => setEditing({ ...editing, tag })}
+          />
+          <LocalizedFieldPair
+            label={ar ? "المقتطف" : "Excerpt"}
+            value={editing.excerpt}
+            onChange={(excerpt) => setEditing({ ...editing, excerpt })}
+            multiline
+          />
+          <div className="flex flex-col gap-3 border-t border-border pt-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-muted">{ar ? "فقرات المقال" : "Paragraphs"}</span>
+              <button
+                type="button"
+                disabled={editing.body.length >= 50}
+                onClick={() => setEditing({ ...editing, body: [...editing.body, { ar: "", en: "" }] })}
+                className={buttonClass("outline", "sm")}
+              >
+                <Plus className="size-3.5" aria-hidden />
+                {ar ? "فقرة" : "Paragraph"}
+              </button>
+            </div>
+            {editing.body.map((para, idx) => (
+              <div key={idx} className="flex flex-col gap-2 rounded-xl border border-border bg-bg-elevated p-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium text-muted">{`${ar ? "فقرة" : "Paragraph"} ${idx + 1}`}</span>
+                  {editing.body.length > 1 ? (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setEditing({ ...editing, body: editing.body.filter((_, i) => i !== idx) })
+                      }
+                      aria-label="Remove paragraph"
+                      className="inline-flex items-center gap-1 rounded border border-border px-2 py-0.5 text-xs text-muted hover:text-danger"
+                    >
+                      <Trash2 className="size-3" aria-hidden />
+                    </button>
+                  ) : null}
+                </div>
+                <LocalizedFieldPair
+                  label={`${ar ? "المحتوى" : "Content"}`}
+                  value={para}
+                  onChange={(next) => {
+                    const body = [...editing.body];
+                    body[idx] = next;
+                    setEditing({ ...editing, body });
+                  }}
+                  multiline
+                />
+              </div>
+            ))}
+          </div>
+          <div className="flex items-center gap-2">
+            <button type="submit" disabled={saving} className={buttonClass("primary", "sm")}>
+              <Save className="size-4" aria-hidden />
+              {saving ? (ar ? "جارٍ الحفظ…" : "Saving…") : ar ? "حفظ" : "Save"}
+            </button>
+            <button type="button" onClick={() => setEditing(null)} className={buttonClass("outline", "sm")}>
+              {ar ? "إلغاء" : "Cancel"}
+            </button>
+          </div>
+        </form>
+      ) : null}
+
+      <ul className="flex flex-col gap-2">
+        {items.map((item) => (
+          <li key={item.slug} className="flex items-center justify-between gap-3 rounded-xl border border-border bg-surface p-4">
+            <div className="flex flex-col gap-0.5">
+              <span className="text-xs text-muted tabular-nums">{item.date} · {ar ? item.tag.ar : item.tag.en}</span>
+              <span className="font-medium">{ar ? item.title.ar : item.title.en}</span>
+            </div>
+            <div className="flex shrink-0 items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setEditing(item)}
+                className="rounded-lg border border-border px-2.5 py-1.5 text-xs hover:bg-surface-2"
+              >
+                {ar ? "تعديل" : "Edit"}
+              </button>
+              <ConfirmDeleteButton locale={locale} onConfirm={() => handleDelete(item.slug)} />
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+export function TeamEditor({
+  items,
+  user,
+  locale,
+  onSaved,
+  notify,
+}: {
+  items: MemberDoc[];
+  user: User | null;
+  locale: string;
+  onSaved: () => Promise<void>;
+  notify: NotifyFn;
+}) {
+  const ar = locale === "ar";
+  const [editing, setEditing] = useState<MemberDoc | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const startNew = () =>
+    setEditing({
+      slug: `member-${Date.now().toString(36)}`,
+      order: items.length + 1,
+      initials: "CN",
+      name: { ar: "", en: "" },
+      role: { ar: "", en: "" },
+      focus: { ar: "", en: "" },
+      responsibilities: [{ ar: "", en: "" }],
+      stack: ["TypeScript"],
+      placeholder: false,
+    });
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editing) return;
+    if (
+      !editing.initials.trim() ||
+      !editing.name ||
+      !hasLocalizedText(editing.name) ||
+      !hasLocalizedText(editing.role) ||
+      !hasLocalizedText(editing.focus)
+    ) {
+      notify(
+        ar
+          ? "الأحرف الأولى والاسم والدور والتركيز مطلوبة باللغتين"
+          : "Initials, name, role, and focus are required in both languages",
+        true,
+      );
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const normalizedSlug = slugifyAscii(editing.slug || editing.name?.en || editing.role.en, "member");
+      const cleanResponsibilities = editing.responsibilities.filter((r) => hasLocalizedText(r));
+      await saveMember({
+        ...editing,
+        slug: normalizedSlug,
+        responsibilities: cleanResponsibilities,
+      });
+      await triggerRevalidation(user, ["team"]);
+      await onSaved();
+      setEditing(null);
+      notify(ar ? "تم حفظ العضو" : "Member saved");
+    } catch {
+      notify(ar ? "تعذر حفظ العضو" : "Failed to save member", true);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async (slug: string) => {
+    try {
+      await deleteCmsDocument("team", slug);
+      await triggerRevalidation(user, ["team"]);
+      await onSaved();
+      notify(ar ? "تم حذف العضو" : "Member deleted");
+    } catch {
+      notify(ar ? "تعذر حذف العضو" : "Failed to delete member", true);
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold">{ar ? "أعضاء الفريق والأدوار" : "Team Members & Roles"}</h2>
+        <button type="button" onClick={startNew} className={buttonClass("primary", "sm")}>
+          <Plus className="size-4" aria-hidden />
+          {ar ? "عضو جديد" : "New member"}
+        </button>
+      </div>
+
+      {editing ? (
+        <form onSubmit={handleSave} className="flex flex-col gap-4 rounded-2xl border border-border bg-surface p-6">
+          <div className="grid gap-4 sm:grid-cols-4">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-medium text-muted">Slug</label>
+              <input
+                type="text"
+                dir="ltr"
+                value={editing.slug}
+                onChange={(e) => setEditing({ ...editing, slug: e.target.value })}
+                className={fieldInputClass}
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-medium text-muted">{ar ? "الأحرف الأولى" : "Initials"}</label>
+              <input
+                type="text"
+                dir="ltr"
+                maxLength={6}
+                value={editing.initials}
+                onChange={(e) => setEditing({ ...editing, initials: e.target.value })}
+                className={fieldInputClass}
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-medium text-muted">{ar ? "الترتيب" : "Order"}</label>
+              <input
+                type="number"
+                value={editing.order}
+                onChange={(e) => setEditing({ ...editing, order: Number(e.target.value) })}
+                className={fieldInputClass}
+              />
+            </div>
+            <label className="flex items-center gap-2 self-end pb-2 text-sm">
+              <input
+                type="checkbox"
+                checked={editing.placeholder}
+                onChange={(e) => setEditing({ ...editing, placeholder: e.target.checked })}
+              />
+              {ar ? "عضو توضيحي" : "Placeholder member"}
+            </label>
+          </div>
+          <LocalizedFieldPair
+            label={ar ? "اسم العضو" : "Member name"}
+            value={editing.name ?? { ar: "", en: "" }}
+            onChange={(name) => setEditing({ ...editing, name })}
+          />
+          <LocalizedFieldPair
+            label={ar ? "المسمى الوظيفي / الدور" : "Role / Title"}
+            value={editing.role}
+            onChange={(role) => setEditing({ ...editing, role })}
+          />
+          <LocalizedFieldPair
+            label={ar ? "التركيز" : "Focus"}
+            value={editing.focus}
+            onChange={(focus) => setEditing({ ...editing, focus })}
+            multiline
+          />
+
+          <div className="flex flex-col gap-3 border-t border-border pt-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-muted">{ar ? "المسؤوليات" : "Responsibilities"}</span>
+              <button
+                type="button"
+                disabled={editing.responsibilities.length >= 15}
+                onClick={() =>
+                  setEditing({
+                    ...editing,
+                    responsibilities: [...editing.responsibilities, { ar: "", en: "" }],
+                  })
+                }
+                className={buttonClass("outline", "sm")}
+              >
+                <Plus className="size-3.5" aria-hidden />
+                {ar ? "إضافة مسؤولية" : "Add responsibility"}
+              </button>
+            </div>
+            {editing.responsibilities.map((resp, idx) => (
+              <div key={idx} className="grid gap-3 rounded-xl border border-border bg-bg-elevated p-3 sm:grid-cols-[1fr_auto] sm:items-end">
+                <LocalizedFieldPair
+                  label={`${ar ? "مسؤولية" : "Responsibility"} ${idx + 1}`}
+                  value={resp}
+                  onChange={(next) => {
+                    const nextList = [...editing.responsibilities];
+                    nextList[idx] = next;
+                    setEditing({ ...editing, responsibilities: nextList });
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() =>
+                    setEditing({
+                      ...editing,
+                      responsibilities: editing.responsibilities.filter((_, i) => i !== idx),
+                    })
+                  }
+                  aria-label="Remove responsibility"
+                  className="inline-flex size-10 items-center justify-center rounded-lg border border-border text-muted hover:text-danger"
+                >
+                  <Trash2 className="size-4" aria-hidden />
+                </button>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-medium text-muted">{ar ? "الأدوات (مفصولة بفاصلة)" : "Stack (comma separated)"}</label>
+            <input
+              type="text"
+              dir="ltr"
+              value={editing.stack.join(", ")}
+              onChange={(e) =>
+                setEditing({
+                  ...editing,
+                  stack: e.target.value.split(",").map((s) => s.trim()).filter(Boolean),
+                })
+              }
+              className={fieldInputClass}
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <button type="submit" disabled={saving} className={buttonClass("primary", "sm")}>
+              <Save className="size-4" aria-hidden />
+              {saving ? (ar ? "جارٍ الحفظ…" : "Saving…") : ar ? "حفظ" : "Save"}
+            </button>
+            <button type="button" onClick={() => setEditing(null)} className={buttonClass("outline", "sm")}>
+              {ar ? "إلغاء" : "Cancel"}
+            </button>
+          </div>
+        </form>
+      ) : null}
+
+      <ul className="grid gap-3 sm:grid-cols-2">
+        {items.map((item) => {
+          const displayName = item.name ? (ar ? item.name.ar : item.name.en) : "";
+          const displayRole = ar ? item.role.ar : item.role.en;
+          return (
+            <li key={item.slug} className="flex items-start justify-between gap-3 rounded-xl border border-border bg-surface p-4">
+              <div className="flex flex-col gap-1">
+                <span className="text-xs text-muted">{item.initials} · #{item.order}</span>
+                <span className="font-medium">
+                  {displayName ? `${displayName} — ${displayRole}` : displayRole}
+                </span>
+                <span className="line-clamp-2 text-xs text-muted">{ar ? item.focus.ar : item.focus.en}</span>
+              </div>
+              <div className="flex shrink-0 items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setEditing({ ...item, name: item.name ?? { ar: "", en: "" } })}
+                  className="rounded-lg border border-border px-2.5 py-1.5 text-xs hover:bg-surface-2"
+                >
+                  {ar ? "تعديل" : "Edit"}
+                </button>
+                <ConfirmDeleteButton locale={locale} onConfirm={() => handleDelete(item.slug)} />
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
+export function TechEditor({
+  items,
+  user,
+  locale,
+  onSaved,
+  notify,
+}: {
+  items: TechDoc[];
+  user: User | null;
+  locale: string;
+  onSaved: () => Promise<void>;
+  notify: NotifyFn;
+}) {
+  const ar = locale === "ar";
+  const [editing, setEditing] = useState<TechDoc | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const startNew = () =>
+    setEditing({
+      id: `tech-${Date.now().toString(36)}`,
+      name: "",
+      group: "web",
+      category: { ar: "", en: "" },
+      description: { ar: "", en: "" },
+      accent: "violet",
+    });
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editing) return;
+    if (!editing.name.trim() || !hasLocalizedText(editing.category) || !hasLocalizedText(editing.description)) {
+      notify(ar ? "اسم التقنية والتصنيف والوصف مطلوبون" : "Name, category, and description are required", true);
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const id = editing.id || slugifyAscii(editing.name, "tech");
+      await saveTech(id, editing);
+      await triggerRevalidation(user, ["tech"]);
+      await onSaved();
+      setEditing(null);
+      notify(ar ? "تم حفظ التقنية" : "Tech saved");
+    } catch {
+      notify(ar ? "تعذر حفظ التقنية" : "Failed to save tech", true);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold">{ar ? "التقنيات" : "Tech Stack"}</h2>
+        <button type="button" onClick={startNew} className={buttonClass("primary", "sm")}>
+          <Plus className="size-4" aria-hidden />
+          {ar ? "تقنية جديدة" : "New tech"}
+        </button>
+      </div>
+
+      {editing ? (
+        <form onSubmit={handleSave} className="flex flex-col gap-4 rounded-2xl border border-border bg-surface p-6">
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-medium text-muted">{ar ? "الاسم" : "Name"}</label>
+              <input
+                type="text"
+                dir="ltr"
+                value={editing.name}
+                onChange={(e) => setEditing({ ...editing, name: e.target.value })}
+                className={fieldInputClass}
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-medium text-muted">{ar ? "المجموعة" : "Group"}</label>
+              <select
+                value={editing.group}
+                onChange={(e) => setEditing({ ...editing, group: e.target.value as Tech["group"] })}
+                className={fieldInputClass}
+              >
+                {(["web", "backend", "mobile", "database", "tools"] as const).map((g) => (
+                  <option key={g} value={g}>{g}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-medium text-muted">{ar ? "اللون" : "Accent"}</label>
+              <select
+                value={editing.accent}
+                onChange={(e) => setEditing({ ...editing, accent: e.target.value as Tech["accent"] })}
+                className={fieldInputClass}
+              >
+                {(["violet", "mint", "sky", "amber"] as const).map((a) => (
+                  <option key={a} value={a}>{a}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <LocalizedFieldPair
+            label={ar ? "التصنيف" : "Category"}
+            value={editing.category}
+            onChange={(category) => setEditing({ ...editing, category })}
+          />
+          <LocalizedFieldPair
+            label={ar ? "الوصف" : "Description"}
+            value={editing.description}
+            onChange={(description) => setEditing({ ...editing, description })}
+          />
+          <div className="flex items-center gap-2">
+            <button type="submit" disabled={saving} className={buttonClass("primary", "sm")}>
+              <Save className="size-4" aria-hidden />
+              {saving ? (ar ? "جارٍ الحفظ…" : "Saving…") : ar ? "حفظ" : "Save"}
+            </button>
+            <button type="button" onClick={() => setEditing(null)} className={buttonClass("outline", "sm")}>
+              {ar ? "إلغاء" : "Cancel"}
+            </button>
+          </div>
+        </form>
+      ) : null}
+
+      <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+        {items.map((item) => (
+          <li key={item.id} className="flex items-center justify-between gap-2 rounded-xl border border-border bg-surface p-3.5">
+            <div>
+              <p className="text-sm font-medium">{item.name}</p>
+              <p className="text-xs text-muted">{item.group} · {ar ? item.category.ar : item.category.en}</p>
+            </div>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setEditing(item)}
+                className="rounded-lg border border-border px-2 py-1 text-xs hover:bg-surface-2"
+              >
+                {ar ? "تعديل" : "Edit"}
+              </button>
+              <ConfirmDeleteButton
+                locale={locale}
+                onConfirm={async () => {
+                  await deleteCmsDocument("techStack", item.id);
+                  await triggerRevalidation(user, ["tech"]);
+                  await onSaved();
+                  notify(ar ? "تم الحذف" : "Deleted");
+                }}
+              />
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+export function ExtrasEditor({
+  sectors,
+  testimonials,
+  faqs,
+  user,
+  locale,
+  onSaved,
+  notify,
+}: {
+  sectors: SectorDoc[];
+  testimonials: TestimonialDoc[];
+  faqs: FaqDoc[];
+  user: User | null;
+  locale: string;
+  onSaved: () => Promise<void>;
+  notify: NotifyFn;
+}) {
+  const ar = locale === "ar";
+  const [faqEdit, setFaqEdit] = useState<FaqDoc | null>(null);
+  const [quoteEdit, setQuoteEdit] = useState<TestimonialDoc | null>(null);
+  const [sectorEdit, setSectorEdit] = useState<SectorDoc | null>(null);
+  const [savingSection, setSavingSection] = useState<"faq" | "sector" | "quote" | null>(null);
+
+  return (
+    <div className="flex flex-col gap-8">
+      <div className="flex flex-col gap-3 rounded-2xl border border-border bg-surface p-6">
+        <div className="flex items-center justify-between">
+          <h2 className="text-base font-semibold">{ar ? "الأسئلة الشائعة" : "FAQs"}</h2>
+          <button
+            type="button"
+            onClick={() =>
+              setFaqEdit({ id: `faq-${Date.now().toString(36)}`, order: faqs.length + 1, q: { ar: "", en: "" }, a: { ar: "", en: "" } })
+            }
+            className={buttonClass("outline", "sm")}
+          >
+            <Plus className="size-3.5" aria-hidden />
+            {ar ? "إضافة سؤال" : "Add FAQ"}
+          </button>
+        </div>
+        {faqEdit ? (
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              if (!hasLocalizedText(faqEdit.q) || !hasLocalizedText(faqEdit.a)) {
+                notify(ar ? "أدخل السؤال والإجابة باللغتين" : "Question and answer are required in both languages", true);
+                return;
+              }
+              setSavingSection("faq");
+              try {
+                await saveFaq(faqEdit.id, { order: faqEdit.order, q: faqEdit.q, a: faqEdit.a });
+                await triggerRevalidation(user, ["faqs"]);
+                await onSaved();
+                setFaqEdit(null);
+                notify(ar ? "تم حفظ السؤال" : "FAQ saved");
+              } catch {
+                notify(ar ? "تعذر حفظ السؤال" : "Failed to save FAQ", true);
+              } finally {
+                setSavingSection(null);
+              }
+            }}
+            className="flex flex-col gap-3 rounded-xl border border-border bg-bg-elevated p-4"
+          >
+            <LocalizedFieldPair label={ar ? "السؤال" : "Question"} value={faqEdit.q} onChange={(q) => setFaqEdit({ ...faqEdit, q })} />
+            <LocalizedFieldPair label={ar ? "الإجابة" : "Answer"} value={faqEdit.a} onChange={(a) => setFaqEdit({ ...faqEdit, a })} multiline />
+            <div className="flex gap-2">
+              <button type="submit" disabled={savingSection === "faq"} className={buttonClass("primary", "sm")}>
+                {savingSection === "faq" ? (ar ? "جارٍ الحفظ…" : "Saving…") : ar ? "حفظ" : "Save"}
+              </button>
+              <button type="button" onClick={() => setFaqEdit(null)} className={buttonClass("outline", "sm")}>{ar ? "إلغاء" : "Cancel"}</button>
+            </div>
+          </form>
+        ) : null}
+        <ul className="flex flex-col gap-2">
+          {faqs.map((faq) => (
+            <li key={faq.id} className="flex items-center justify-between gap-3 rounded-xl border border-border bg-bg-elevated p-3">
+              <span className="text-sm">{ar ? faq.q.ar : faq.q.en}</span>
+              <div className="flex shrink-0 gap-1">
+                <button type="button" onClick={() => setFaqEdit(faq)} className="rounded border border-border px-2 py-1 text-xs">{ar ? "تعديل" : "Edit"}</button>
+                <ConfirmDeleteButton
+                  locale={locale}
+                  onConfirm={async () => {
+                    await deleteCmsDocument("faqs", faq.id);
+                    await triggerRevalidation(user, ["faqs"]);
+                    await onSaved();
+                    notify(ar ? "تم الحذف" : "Deleted");
+                  }}
+                />
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <div className="flex flex-col gap-3 rounded-2xl border border-border bg-surface p-6">
+        <div className="flex items-center justify-between">
+          <h2 className="text-base font-semibold">{ar ? "القطاعات" : "Sectors"}</h2>
+          <button
+            type="button"
+            onClick={() =>
+              setSectorEdit({ id: `sector-${Date.now().toString(36)}`, order: sectors.length + 1, icon: "cpu", label: { ar: "", en: "" } })
+            }
+            className={buttonClass("outline", "sm")}
+          >
+            <Plus className="size-3.5" aria-hidden />
+            {ar ? "إضافة قطاع" : "Add Sector"}
+          </button>
+        </div>
+        {sectorEdit ? (
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              if (!hasLocalizedText(sectorEdit.label)) {
+                notify(ar ? "أدخل اسم القطاع باللغتين" : "Sector label is required in both languages", true);
+                return;
+              }
+              setSavingSection("sector");
+              try {
+                await saveSector(sectorEdit.id, { order: sectorEdit.order, icon: sectorEdit.icon, label: sectorEdit.label });
+                await triggerRevalidation(user, ["sectors"]);
+                await onSaved();
+                setSectorEdit(null);
+                notify(ar ? "تم حفظ القطاع" : "Sector saved");
+              } catch {
+                notify(ar ? "تعذر حفظ القطاع" : "Failed to save sector", true);
+              } finally {
+                setSavingSection(null);
+              }
+            }}
+            className="flex flex-col gap-3 rounded-xl border border-border bg-bg-elevated p-4"
+          >
+            <select
+              value={sectorEdit.icon}
+              onChange={(e) => setSectorEdit({ ...sectorEdit, icon: e.target.value as Sector["icon"] })}
+              className={fieldInputClass}
+            >
+              {(["cart", "cpu", "book", "heart", "bank", "truck", "building", "plane"] as const).map((ic) => (
+                <option key={ic} value={ic}>{ic}</option>
+              ))}
+            </select>
+            <LocalizedFieldPair label={ar ? "الاسم" : "Label"} value={sectorEdit.label} onChange={(label) => setSectorEdit({ ...sectorEdit, label })} />
+            <div className="flex gap-2">
+              <button type="submit" disabled={savingSection === "sector"} className={buttonClass("primary", "sm")}>
+                {savingSection === "sector" ? (ar ? "جارٍ الحفظ…" : "Saving…") : ar ? "حفظ" : "Save"}
+              </button>
+              <button type="button" onClick={() => setSectorEdit(null)} className={buttonClass("outline", "sm")}>{ar ? "إلغاء" : "Cancel"}</button>
+            </div>
+          </form>
+        ) : null}
+        <ul className="grid gap-2 sm:grid-cols-2">
+          {sectors.map((s) => (
+            <li key={s.id} className="flex items-center justify-between rounded-xl border border-border bg-bg-elevated p-3">
+              <span className="text-sm">{ar ? s.label.ar : s.label.en}</span>
+              <div className="flex shrink-0 gap-1">
+                <button type="button" onClick={() => setSectorEdit(s)} className="rounded border border-border px-2 py-1 text-xs">{ar ? "تعديل" : "Edit"}</button>
+                <ConfirmDeleteButton
+                  locale={locale}
+                  onConfirm={async () => {
+                    await deleteCmsDocument("sectors", s.id);
+                    await triggerRevalidation(user, ["sectors"]);
+                    await onSaved();
+                    notify(ar ? "تم الحذف" : "Deleted");
+                  }}
+                />
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <div className="flex flex-col gap-3 rounded-2xl border border-border bg-surface p-6">
+        <div className="flex items-center justify-between">
+          <h2 className="text-base font-semibold">{ar ? "آراء العملاء" : "Testimonials"}</h2>
+          <button
+            type="button"
+            onClick={() =>
+              setQuoteEdit({
+                id: `testimonial-${Date.now().toString(36)}`,
+                order: testimonials.length + 1,
+                initials: "CL",
+                quote: { ar: "", en: "" },
+                role: { ar: "", en: "" },
+                placeholder: false,
+              })
+            }
+            className={buttonClass("outline", "sm")}
+          >
+            <Plus className="size-3.5" aria-hidden />
+            {ar ? "إضافة رأي" : "Add Quote"}
+          </button>
+        </div>
+        {quoteEdit ? (
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              if (!quoteEdit.initials.trim() || !hasLocalizedText(quoteEdit.quote) || !hasLocalizedText(quoteEdit.role)) {
+                notify(ar ? "الأحرف الأولى والاقتباس والدور مطلوبة" : "Initials, quote, and role are required", true);
+                return;
+              }
+              setSavingSection("quote");
+              try {
+                await saveTestimonial(quoteEdit.id, {
+                  order: quoteEdit.order,
+                  initials: quoteEdit.initials,
+                  quote: quoteEdit.quote,
+                  role: quoteEdit.role,
+                  placeholder: quoteEdit.placeholder,
+                });
+                await triggerRevalidation(user, ["testimonials"]);
+                await onSaved();
+                setQuoteEdit(null);
+                notify(ar ? "تم حفظ الرأي" : "Testimonial saved");
+              } catch {
+                notify(ar ? "تعذر حفظ الرأي" : "Failed to save testimonial", true);
+              } finally {
+                setSavingSection(null);
+              }
+            }}
+            className="flex flex-col gap-3 rounded-xl border border-border bg-bg-elevated p-4"
+          >
+            <div className="grid gap-3 sm:grid-cols-2">
+              <input
+                type="text"
+                dir="ltr"
+                maxLength={6}
+                value={quoteEdit.initials}
+                onChange={(e) => setQuoteEdit({ ...quoteEdit, initials: e.target.value })}
+                className={fieldInputClass}
+                placeholder="Initials"
+              />
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={quoteEdit.placeholder}
+                  onChange={(e) => setQuoteEdit({ ...quoteEdit, placeholder: e.target.checked })}
+                />
+                {ar ? "رأي توضيحي" : "Placeholder quote"}
+              </label>
+            </div>
+            <LocalizedFieldPair label={ar ? "الاقتباس" : "Quote"} value={quoteEdit.quote} onChange={(quote) => setQuoteEdit({ ...quoteEdit, quote })} multiline />
+            <LocalizedFieldPair label={ar ? "الدور" : "Role"} value={quoteEdit.role} onChange={(role) => setQuoteEdit({ ...quoteEdit, role })} />
+            <div className="flex gap-2">
+              <button type="submit" disabled={savingSection === "quote"} className={buttonClass("primary", "sm")}>
+                {savingSection === "quote" ? (ar ? "جارٍ الحفظ…" : "Saving…") : ar ? "حفظ" : "Save"}
+              </button>
+              <button type="button" onClick={() => setQuoteEdit(null)} className={buttonClass("outline", "sm")}>{ar ? "إلغاء" : "Cancel"}</button>
+            </div>
+          </form>
+        ) : null}
+        <ul className="flex flex-col gap-2">
+          {testimonials.map((item) => (
+            <li key={item.id} className="flex items-center justify-between gap-3 rounded-xl border border-border bg-bg-elevated p-3">
+              <span className="line-clamp-1 text-sm">{ar ? item.quote.ar : item.quote.en}</span>
+              <div className="flex shrink-0 gap-1">
+                <button type="button" onClick={() => setQuoteEdit(item)} className="rounded border border-border px-2 py-1 text-xs">{ar ? "تعديل" : "Edit"}</button>
+                <ConfirmDeleteButton
+                  locale={locale}
+                  onConfirm={async () => {
+                    await deleteCmsDocument("testimonials", item.id);
+                    await triggerRevalidation(user, ["testimonials"]);
+                    await onSaved();
+                    notify(ar ? "تم الحذف" : "Deleted");
+                  }}
+                />
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
+export function LegalEditor({
+  privacy,
+  terms,
+  user,
+  locale,
+  onSaved,
+  notify,
+}: {
+  privacy: LegalPage;
+  terms: LegalPage;
+  user: User | null;
+  locale: string;
+  onSaved: () => Promise<void>;
+  notify: NotifyFn;
+}) {
+  const ar = locale === "ar";
+  const [activeKey, setActiveKey] = useState<"privacy" | "terms">("privacy");
+  const [formPrivacy, setFormPrivacy] = useState<LegalPage>(privacy);
+  const [formTerms, setFormTerms] = useState<LegalPage>(terms);
+  const [saving, setSaving] = useState(false);
+
+  const current = activeKey === "privacy" ? formPrivacy : formTerms;
+  const setCurrent = activeKey === "privacy" ? setFormPrivacy : setFormTerms;
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanSections = current.sections.filter(
+      (s) => hasLocalizedText(s.heading) && hasLocalizedText(s.body),
+    );
+    if (!current.updated.trim() || !hasLocalizedText(current.notice) || !hasLocalizedText(current.intro)) {
+      notify(ar ? "التاريخ والتنبيه والمقدمة مطلوبون باللغتين" : "Date, notice, and intro are required in both languages", true);
+      return;
+    }
+
+    setSaving(true);
+    try {
+      await saveLegal(activeKey, { ...current, sections: cleanSections });
+      await triggerRevalidation(user, ["legal"]);
+      await onSaved();
+      notify(ar ? "تم حفظ الصفحة القانونية" : "Legal page saved");
+    } catch {
+      notify(ar ? "تعذر الحفظ" : "Failed to save", true);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSave} className="flex flex-col gap-5 rounded-2xl border border-border bg-surface p-6">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
+        <div className="flex gap-2">
+          {(["privacy", "terms"] as const).map((k) => (
+            <button
+              key={k}
+              type="button"
+              onClick={() => setActiveKey(k)}
+              className={`rounded-lg px-3 py-1.5 text-xs font-medium ${
+                activeKey === k ? "bg-primary text-primary-fg" : "border border-border text-muted hover:text-text"
+              }`}
+            >
+              {k === "privacy" ? (ar ? "سياسة الخصوصية" : "Privacy Policy") : ar ? "الشروط والأحكام" : "Terms & Conditions"}
+            </button>
+          ))}
+        </div>
+        <button type="submit" disabled={saving} className={buttonClass("primary", "sm")}>
+          <Save className="size-4" aria-hidden />
+          {saving ? (ar ? "جارٍ الحفظ…" : "Saving…") : ar ? "حفظ التغييرات" : "Save"}
+        </button>
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <label className="text-xs font-medium text-muted">{ar ? "تاريخ التحديث" : "Last updated"}</label>
+        <input
+          type="date"
+          dir="ltr"
+          value={current.updated}
+          onChange={(e) => setCurrent({ ...current, updated: e.target.value })}
+          className={fieldInputClass}
+        />
+      </div>
+      <LocalizedFieldPair label={ar ? "تنبيه" : "Notice"} value={current.notice} onChange={(notice) => setCurrent({ ...current, notice })} multiline />
+      <LocalizedFieldPair label={ar ? "مقدمة" : "Intro"} value={current.intro} onChange={(intro) => setCurrent({ ...current, intro })} multiline />
+
+      <div className="flex flex-col gap-3 border-t border-border pt-3">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-medium text-muted">{ar ? "الأقسام" : "Sections"}</span>
+          <button
+            type="button"
+            disabled={current.sections.length >= 20}
+            onClick={() =>
+              setCurrent({
+                ...current,
+                sections: [...current.sections, { heading: { ar: "", en: "" }, body: { ar: "", en: "" } }],
+              })
+            }
+            className={buttonClass("outline", "sm")}
+          >
+            <Plus className="size-3.5" aria-hidden />
+            {ar ? "إضافة قسم" : "Add section"}
+          </button>
+        </div>
+        {current.sections.map((section, idx) => (
+          <div key={idx} className="flex flex-col gap-3 rounded-xl border border-border bg-bg-elevated p-4">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-muted">{`${ar ? "القسم" : "Section"} ${idx + 1}`}</span>
+              <button
+                type="button"
+                onClick={() =>
+                  setCurrent({
+                    ...current,
+                    sections: current.sections.filter((_, i) => i !== idx),
+                  })
+                }
+                aria-label="Remove section"
+                className="inline-flex items-center gap-1 rounded border border-border px-2 py-0.5 text-xs text-muted hover:text-danger"
+              >
+                <Trash2 className="size-3" aria-hidden />
+              </button>
+            </div>
+            <LocalizedFieldPair
+              label={`${ar ? "عنوان القسم" : "Heading"} ${idx + 1}`}
+              value={section.heading}
+              onChange={(heading) => {
+                const sections = [...current.sections];
+                sections[idx] = { ...sections[idx], heading };
+                setCurrent({ ...current, sections });
+              }}
+            />
+            <LocalizedFieldPair
+              label={`${ar ? "النص" : "Body"} ${idx + 1}`}
+              value={section.body}
+              onChange={(body) => {
+                const sections = [...current.sections];
+                sections[idx] = { ...sections[idx], body };
+                setCurrent({ ...current, sections });
+              }}
+              multiline
+            />
+          </div>
+        ))}
+      </div>
+    </form>
+  );
+}
