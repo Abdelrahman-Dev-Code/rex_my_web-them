@@ -1,8 +1,9 @@
+import Image from "next/image";
 import type { Metadata } from "next";
 import { hasLocale } from "next-intl";
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { Handshake, ShieldCheck, Sparkles, Target } from "lucide-react";
+import { Handshake, Layers3, ShieldCheck, Sparkles, Target } from "lucide-react";
 import { PageHero } from "@/components/layout/page-hero";
 import { Reveal } from "@/components/motion/reveal";
 import { TechGrid } from "@/components/sections/tech-grid";
@@ -47,6 +48,7 @@ export default async function AboutPage({
   if (!hasLocale(routing.locales, locale)) notFound();
 
   setRequestLocale(locale);
+  const ar = locale !== "en";
   const t = await getTranslations({ locale, namespace: "pages.about" });
   const techT = await getTranslations({ locale, namespace: "tech" });
   const content = await getHomeContent(locale);
@@ -56,11 +58,11 @@ export default async function AboutPage({
       <PageHero eyebrow={t("eyebrow")} title={t("title")} subtitle={t("subtitle")} />
 
       <section className="section">
-        <div className="container-page grid gap-10 lg:grid-cols-[0.8fr_1.2fr]">
-          <Reveal>
-            <SectionHeading eyebrow={t("eyebrow")} title={t("missionTitle")} />
-          </Reveal>
-          <div className="flex flex-col gap-5">
+        <div className="container-page grid items-stretch gap-10 lg:grid-cols-[1.05fr_0.95fr]">
+          <div className="flex flex-col justify-center gap-6">
+            <Reveal>
+              <SectionHeading eyebrow={t("eyebrow")} title={t("missionTitle")} />
+            </Reveal>
             <Reveal delay={0.06} y={20}>
               <p className="text-pretty text-lg leading-relaxed text-text/90">
                 {pickLocale(content.site.aboutMission ?? aboutMission, locale)}
@@ -72,6 +74,29 @@ export default async function AboutPage({
               </p>
             </Reveal>
           </div>
+
+          <Reveal delay={0.1} y={24} className="h-full">
+            <div className="surface-card relative aspect-[4/3] w-full overflow-hidden lg:h-full">
+              <div
+                aria-hidden
+                className="absolute inset-0 grid place-items-center bg-bg-elevated text-muted"
+              >
+                <Layers3 className="size-8 text-primary/60" aria-hidden />
+              </div>
+              <Image
+                src="/images/studio-atelier.jpg"
+                alt={
+                  ar
+                    ? "ورشة التصميم والهندسة المعمارية للبرمجيات"
+                    : "Digital product engineering atelier workspace"
+                }
+                fill
+                referrerPolicy="no-referrer"
+                sizes="(min-width: 1024px) 44vw, 100vw"
+                className="object-cover"
+              />
+            </div>
+          </Reveal>
         </div>
       </section>
 

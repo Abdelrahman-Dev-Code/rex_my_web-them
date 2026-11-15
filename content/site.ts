@@ -39,8 +39,8 @@ export const site: SiteMeta = {
   },
   shortTagline: { ar: "استوديو رقمي", en: "Digital studio" },
   email: "hello@codenest.example",
-  whatsapp: "10000000000",
-  location: { ar: "الرياض، السعودية", en: "Riyadh, Saudi Arabia" },
+  whatsapp: "967716713514",
+  location: { ar: "اليمن", en: "Yemen" },
   socials: [
     { label: "X", href: "https://x.com/" },
     { label: "GitHub", href: "https://github.com/" },

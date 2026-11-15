@@ -44,22 +44,22 @@ export async function Services({ content }: { content: HomeContent }) {
                 key={`${service.icon}-${index}`}
                 className={isFeatured ? "h-full sm:col-span-2 lg:col-span-2" : "h-full"}
               >
-                <Reveal delay={index * 0.05} y={32} className="h-full">
-                  <div className="gradient-border surface-card group relative flex h-full flex-col gap-4 overflow-hidden p-6 transition-colors duration-300 hover:border-primary/40 hover:bg-surface-2">
+                <Reveal delay={index * 0.04} y={24} className="h-full">
+                  <div className="gradient-border surface-card group relative flex h-full flex-col gap-4 overflow-hidden p-5 transition-colors duration-200 hover:border-primary/40 hover:bg-surface-2 sm:p-6">
                     <span
                       aria-hidden
-                      className="absolute inset-x-6 top-0 h-px scale-x-0 bg-gradient-to-r from-transparent via-primary to-transparent transition-transform duration-500 group-hover:scale-x-100"
+                      className="absolute inset-x-6 top-0 h-px scale-x-0 bg-gradient-to-r from-transparent via-primary to-transparent transition-transform duration-200 group-hover:scale-x-100"
                     />
                     <div className="flex items-start justify-between gap-3">
-                      <span className="grid size-11 place-items-center rounded-xl border border-border bg-bg-elevated text-primary transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:scale-105">
+                      <span className="grid size-11 place-items-center rounded-xl border border-border bg-bg-elevated text-primary transition-transform duration-200 group-hover:scale-105">
                         <Icon className="size-5" aria-hidden />
                       </span>
                       <span
                         aria-hidden
-                        className="text-xs font-medium tabular-nums text-muted/60"
+                        className="text-xs font-medium tabular-nums text-muted/70"
                         dir="ltr"
                       >
-                        {String(index + 1).padStart(2, "0")}
+                        {String(index + 1).padStart(2, "0")}.
                       </span>
                     </div>
                     <h3 className="text-lg font-semibold">{pickLocale(service.title, locale)}</h3>

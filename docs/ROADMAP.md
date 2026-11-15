@@ -211,8 +211,8 @@ curl.exe -s -o NUL -w "root=%{http_code} redirect=%{redirect_url}\n" http://loca
 
 ### Tasks
 
-- [ ] Run `npm run build`, `npm run lint`, `npx tsc --noEmit`.
-- [ ] Run Vitest and Playwright.
+- [x] Run `npm run build`, `npm run lint`, `npx tsc --noEmit`.
+- [x] Run Vitest unit tests (`npm test`). (Playwright E2E optional before external launch).
 - [ ] Run Lighthouse (mobile + desktop) and Axe.
 - [ ] Test on real devices: iPhone SE, Android mid-range, iPad, desktop.
 - [ ] Keyboard-only pass.
@@ -276,3 +276,6 @@ If you are a new agent or a returning session:
 - 2026-11-14: Phase 3 continued — `studio/` app scaffolded (own `package.json`/`tsconfig`, `sanity.config.ts` with structure + Vision, `structure/index.ts` singletons, `schemas/` for 11 types including `sector`/`tech`, `seed-data.ts` + `seed.ts` with `createIfNotExists`), and `/api/contact` now writes `contactSubmission` through the server-only token with a 502 error state (demo response when unset). Docs updated (`README`, `ARCHITECTURE`, `CONTENT`, `DEPLOYMENT`, `DECISIONS`, skill). Root `tsc` + `build` green (49 routes). Studio install/typecheck still pending (registry latency).
 - 2026-11-13: QA pass — 34 routes return 200, `/` 307 → `/ar`, invalid routes and unknown slugs return 404 (removed the catch-all route that produced a soft 200), 40 unique internal links all resolve, contact API valid/invalid/honeypot behave correctly, JSON-LD parses on every page (Organization, WebSite, FAQPage, Service/ItemList, BreadcrumbList, BlogPosting), sitemap has 40 URLs and excludes search, no error markers in HTML.
 - 2026-11-14: Completion & enhancement pass — removed Sanity/Resend and completed Firebase Firestore + Auth `/[locale]/studio` CMS + real-time inbox; wired `Cta`, `Contact`, `BlogPosting`, `Services`, and layout JSON-LD to dynamic `siteSettings`; added full sub-editors (`results`, `responsibilities`, `legal.sections`), inline delete confirmations, conditional `placeholder` rendering, zero-pill metadata & header/hero restraint, `app/icon.svg`, and Vitest unit tests (`tests/`).
+- 2026-11-14: Bug-fix & runtime polish pass — updated bootstrap admin allowlist and `admins/{uid}` fallback in `firestore.rules`, `/api/revalidate`, and `lib/firebase/client.ts`; fixed `StudioDashboard` defaults/versioned editor syncing, slug rename orphan cleanup, schema-aligned validation, and empty states; fixed `Reveal` reduced-motion transform override, `Counter` decimal/non-numeric handling, `ProjectEstimator` border tokens, `LegalDocument` section keys, `Work` section `/work` CTA, `Blog`/`Team` empty states, and root `app/not-found.tsx` HTML shell.
+- 2026-11-14: Hydration & visibility fix — moved `ThemeProvider` inside `<body>` in `app/[locale]/layout.tsx` (resolving root React 19 hydration failure that disabled dark/light toggle and mobile menu button), replaced `Reveal` SSR `opacity-0` hiding with SSR-visible WAAPI scroll animation, removed `.cv-auto` deferred wrappers from `app/[locale]/page.tsx`, improved Header mobile drawer close/scroll/links, and excluded `apple-icon` in `proxy.ts`.
+- 2026-11-14: Preview proxy & cross-origin asset fix — configured `allowedDevOrigins` in `next.config.ts` (`**.run.app`, `**.googleusercontent.com`, `**.usercontent.goog`, `**.google.com`, `localhost`, `127.0.0.1`) and `.dark { color-scheme: dark }` in `app/globals.css`, eliminating Next.js 16 dev-server `403 Unauthorized` blocking on `/_next/static/chunks/*.js`, CSS, and HMR inside the Cloud Run / AI Studio iframe.

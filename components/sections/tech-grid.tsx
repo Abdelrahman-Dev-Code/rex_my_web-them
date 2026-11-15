@@ -23,18 +23,25 @@ export function TechGrid({
   techs,
   locale,
   delay = 0,
+  defaultGroup = "web",
 }: {
   techs: Tech[];
   locale: Locale;
   delay?: number;
+  defaultGroup?: "all" | TechGroupKey;
 }) {
-  const [selectedGroup, setSelectedGroup] = useState<"all" | TechGroupKey>("all");
-
   const availableGroups = useMemo(
     () =>
       techGroups.filter((group) => techs.some((tech) => tech.group === group.key)),
     [techs],
   );
+
+  const resolvedDefault: "all" | TechGroupKey =
+    defaultGroup === "all" || availableGroups.some((g) => g.key === defaultGroup)
+      ? defaultGroup
+      : availableGroups[0]?.key ?? "all";
+
+  const [selectedGroup, setSelectedGroup] = useState<"all" | TechGroupKey>(resolvedDefault);
 
   const visibleGroups =
     selectedGroup === "all"
@@ -44,26 +51,12 @@ export function TechGrid({
   if (techs.length === 0) return null;
 
   return (
-    <div className="flex flex-col gap-10">
+    <div className="flex flex-col gap-8 sm:gap-10">
       <div
         role="group"
         aria-label={locale === "ar" ? "تصفية التقنيات والأدوات" : "Filter technologies and tools"}
-        className="flex flex-wrap items-center gap-1.5 self-start rounded-xl border border-border bg-bg-elevated p-1"
+        className="flex max-w-full flex-wrap items-center gap-1.5 self-start rounded-xl border border-border bg-bg-elevated p-1"
       >
-        <button
-          type="button"
-          aria-pressed={selectedGroup === "all"}
-          onClick={() => setSelectedGroup("all")}
-          className={`inline-flex items-center gap-2 rounded-lg px-3.5 py-2 text-xs font-medium whitespace-nowrap shrink-0 transition-colors ${
-            selectedGroup === "all"
-              ? "bg-surface text-text shadow-sm"
-              : "text-muted hover:text-text"
-          }`}
-        >
-          <span>{locale === "ar" ? "الكل" : "All"}</span>
-          <span className="tabular-nums text-[11px] text-muted">{techs.length}</span>
-        </button>
-
         {availableGroups.map((group) => {
           const count = techs.filter((t) => t.group === group.key).length;
           const isActive = selectedGroup === group.key;
@@ -73,7 +66,7 @@ export function TechGrid({
               type="button"
               aria-pressed={isActive}
               onClick={() => setSelectedGroup(group.key)}
-              className={`inline-flex items-center gap-2 rounded-lg px-3.5 py-2 text-xs font-medium whitespace-nowrap shrink-0 transition-colors ${
+              className={`inline-flex min-h-9 shrink-0 cursor-pointer items-center gap-2 whitespace-nowrap rounded-lg px-3.5 py-2 text-xs font-medium transition-colors ${
                 isActive
                   ? "bg-surface text-text shadow-sm"
                   : "text-muted hover:text-text"
@@ -84,9 +77,23 @@ export function TechGrid({
             </button>
           );
         })}
+
+        <button
+          type="button"
+          aria-pressed={selectedGroup === "all"}
+          onClick={() => setSelectedGroup("all")}
+          className={`inline-flex min-h-9 shrink-0 cursor-pointer items-center gap-2 whitespace-nowrap rounded-lg px-3.5 py-2 text-xs font-medium transition-colors ${
+            selectedGroup === "all"
+              ? "bg-surface text-text shadow-sm"
+              : "text-muted hover:text-text"
+          }`}
+        >
+          <span>{locale === "ar" ? "عرض الكل" : "Show all"}</span>
+          <span className="tabular-nums text-[11px] text-muted">{techs.length}</span>
+        </button>
       </div>
 
-      <div className="flex flex-col gap-12">
+      <div className="flex flex-col gap-10">
         {visibleGroups.map((group, groupIndex) => {
           const items = techs.filter((tech) => tech.group === group.key);
           if (items.length === 0) return null;

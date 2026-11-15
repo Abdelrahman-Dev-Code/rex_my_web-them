@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { revalidatePath, revalidateTag } from "next/cache";
 import firebaseConfig from "@/firebase-applet-config.json";
-import { BOOTSTRAP_ADMIN_EMAIL } from "@/lib/firebase/client";
+import { isBootstrapAdminEmail } from "@/lib/firebase/client";
 
 const VALID_TAGS = new Set([
   "site",
@@ -33,10 +33,21 @@ async function verifyFirebaseAdminToken(idToken: string): Promise<boolean> {
 
     if (!response.ok) return false;
     const data = (await response.json()) as {
-      users?: { email?: string; emailVerified?: boolean }[];
+      users?: { localId?: string; email?: string; emailVerified?: boolean }[];
     };
     const user = data.users?.[0];
-    return Boolean(user?.emailVerified && user.email === BOOTSTRAP_ADMIN_EMAIL);
+    if (!user?.emailVerified) return false;
+    if (isBootstrapAdminEmail(user.email)) return true;
+
+    if (user.localId && /^[a-zA-Z0-9_-]+$/.test(user.localId)) {
+      const databaseId = firebaseConfig.firestoreDatabaseId || "(default)";
+      const adminDocUrl = `https://firestore.googleapis.com/v1/projects/${firebaseConfig.projectId}/databases/${encodeURIComponent(databaseId)}/documents/admins/${user.localId}`;
+      const adminRes = await fetch(adminDocUrl, {
+        headers: { Authorization: `Bearer ${idToken}` },
+      });
+      return adminRes.ok;
+    }
+    return false;
   } catch {
     return false;
   }

@@ -3,7 +3,17 @@ import { getAuth, type Auth } from "firebase/auth";
 import { doc, getDocFromServer, getFirestore, type Firestore } from "firebase/firestore";
 import firebaseConfig from "@/firebase-applet-config.json";
 
-export const BOOTSTRAP_ADMIN_EMAIL = "abdelrahmandevcode@gmail.com";
+export const BOOTSTRAP_ADMIN_EMAIL = "abduarahman.naif.ali@gmail.com";
+export const BOOTSTRAP_ADMIN_EMAILS = [
+  "abduarahman.naif.ali@gmail.com",
+  "abdelrahmandevcode@gmail.com",
+] as const;
+
+export function isBootstrapAdminEmail(email?: string | null): boolean {
+  if (!email) return false;
+  const normalized = email.trim().toLowerCase();
+  return BOOTSTRAP_ADMIN_EMAILS.some((adminEmail) => adminEmail.toLowerCase() === normalized);
+}
 
 export function getFirebaseApp(): FirebaseApp {
   return getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);

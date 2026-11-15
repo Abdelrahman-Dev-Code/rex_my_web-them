@@ -1,12 +1,12 @@
 {
-  "projectId": "jittery-tomorrow-7xq1s",
-  "appId": "1:361918760151:web:edd3aeab44f9414e1e1c92",
-  "apiKey": "AIzaSyDOqYRHHbI--z65cSlyR05EFGRW8fTCYt4",
-  "authDomain": "jittery-tomorrow-7xq1s.firebaseapp.com",
-  "firestoreDatabaseId": "ai-studio-remixmywebsiteth-01aa8ea7-2db2-4bd0-815a-7d5dcfb6c13c",
-  "storageBucket": "jittery-tomorrow-7xq1s.firebasestorage.app",
-  "messagingSenderId": "361918760151",
+  "projectId": "gen-lang-client-0408400051",
+  "appId": "1:139449368787:web:9ea14040ce6d3f176a9426",
+  "apiKey": "AIzaSyCXwzN5XpgRH5-c3eJi0T4iIcDdFrBMuZk",
+  "authDomain": "gen-lang-client-0408400051.firebaseapp.com",
+  "firestoreDatabaseId": "ai-studio-rexmywebthem-c0df8365-9a5e-4d09-8228-0172e7ee97e0",
+  "storageBucket": "gen-lang-client-0408400051.firebasestorage.app",
+  "messagingSenderId": "139449368787",
   "measurementId": "",
-  "oAuthClientId": "361918760151-bl24etp77tl65kv6oscookaa17tehpc7.apps.googleusercontent.com",
+  "oAuthClientId": "139449368787-28uiclb49d7nsdr1aahes2s12djqj0b5.apps.googleusercontent.com",
   "recaptchaSiteKey": ""
 }

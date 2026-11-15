@@ -61,8 +61,7 @@
     "title": "Have an idea? Let's talk.",
     "subtitle": "Tell us about your project and we'll get back with a clear plan within 24 hours.",
     "primary": "Contact us",
-    "secondary": "Chat on WhatsApp",
-    "band": "Let's build something great"
+    "secondary": "Chat on WhatsApp"
   },
   "tech": {
     "eyebrow": "Tech stack",
@@ -124,7 +123,7 @@
     "company": "Company",
     "companyPlaceholder": "Company or project name",
     "message": "Project details",
-    "messagePlaceholder": "What do you want to build? Any deadline or rough budget?",
+    "messagePlaceholder": "What would you like to build, and what is your target timeline?",
     "quickStarters": "Quick brief starters",
     "copyEmail": "Copy email",
     "copiedEmail": "Copied",
@@ -185,7 +184,7 @@
       "whatsappTitle": "WhatsApp",
       "whatsappBody": "A quick, direct chat for your first questions.",
       "locationTitle": "Location",
-      "locationBody": "Riyadh, Saudi Arabia — working remotely with clients everywhere."
+      "locationBody": "Yemen — working remotely with clients everywhere."
     }
   },
   "legal": {

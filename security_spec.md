@@ -7,7 +7,7 @@
    - Anyone may `create` a contact submission ONLY if it matches the exact key set (`hasAll` + `hasOnly`), passes strict field length/format checks, initializes `status == "new"` and `notes == ""`, and uses server timestamps (`createdAt == request.time && updatedAt == request.time`).
    - Reading (`get`, `list`), updating (`status`, `notes`, `updatedAt`), and deleting `contactSubmissions` is strictly restricted to verified admins (`isAdmin()`).
 4. **Admin Verification & Anti-Spoofing**:
-   - `isAdmin()` requires `request.auth != null`, `request.auth.token.email_verified == true`, and either the bootstrapped admin email (`abdelrahmandevcode@gmail.com`) or an existing `/admins/{request.auth.uid}` document.
+   - `isAdmin()` requires `request.auth != null`, `request.auth.token.email_verified == true`, and either a bootstrapped admin email (`abduarahman.naif.ali@gmail.com`, `abdelrahmandevcode@gmail.com`) or an existing `/admins/{request.auth.uid}` document.
    - Clients can never self-register into `/admins/{uid}`.
 5. **Path Variable & Array Bounds**:
    - All document IDs on single-document ops validate against `isValidId(id)` (`^[a-zA-Z0-9_\-]+$`, max 128 chars).

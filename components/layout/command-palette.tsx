@@ -199,11 +199,14 @@ export function CommandPalette({ items }: CommandPaletteProps) {
         type="button"
         onClick={() => setOpen(true)}
         aria-label={t("search.label")}
-        className="hidden h-10 items-center gap-2 rounded-full border border-border px-3 text-xs text-muted transition-colors hover:bg-surface hover:text-text md:inline-flex"
+        title={`${t("search.label")} (⌘K)`}
+        className="hidden h-10 shrink-0 cursor-pointer items-center gap-2 whitespace-nowrap rounded-full border border-border px-2.5 text-xs text-muted transition-colors hover:bg-surface hover:text-text sm:inline-flex xl:px-3.5"
       >
-        <Search className="size-4" aria-hidden />
-        <span>{t("search.label")}</span>
-        <kbd className="rounded border border-border bg-surface px-1.5 py-0.5 text-[10px]">⌘K</kbd>
+        <Search className="size-4 shrink-0" aria-hidden />
+        <span className="hidden xl:inline">{t("search.label")}</span>
+        <kbd className="hidden rounded border border-border bg-surface px-1.5 py-0.5 text-[10px] xl:inline">
+          ⌘K
+        </kbd>
       </button>
 
       {overlay}

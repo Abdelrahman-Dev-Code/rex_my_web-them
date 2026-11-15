@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 type Callback = () => void;
@@ -25,7 +25,7 @@ function getSharedObserver(): IntersectionObserver | null {
           }
         }
       },
-      { threshold: 0.08, rootMargin: "0px 0px -4% 0px" },
+      { threshold: 0.01, rootMargin: "40px 0px" },
     );
   }
   return sharedObserver;
@@ -41,44 +41,46 @@ type RevealProps = {
 
 export function Reveal({ children, className, delay = 0, y = 20 }: RevealProps) {
   const ref = useRef<HTMLDivElement>(null);
-  const [visible, setVisible] = useState(false);
 
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    if (typeof el.animate !== "function") return;
 
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      return;
-    }
+    const rect = el.getBoundingClientRect();
+    const isBelowFold = rect.top > window.innerHeight * 0.98;
+    if (!isBelowFold) return;
 
     const observer = getSharedObserver();
-    if (!observer) {
-      const id = window.requestAnimationFrame(() => setVisible(true));
-      return () => window.cancelAnimationFrame(id);
-    }
+    if (!observer) return;
 
-    listeners.set(el, () => setVisible(true));
+    const play = () => {
+      el.animate(
+        [
+          { opacity: 0.01, transform: `translate3d(0, ${y}px, 0)` },
+          { opacity: 1, transform: "translate3d(0, 0, 0)" },
+        ],
+        {
+          duration: 480,
+          delay: Math.min(delay, 0.35) * 1000,
+          easing: "cubic-bezier(0.16, 1, 0.3, 1)",
+          fill: "backwards",
+        },
+      );
+    };
+
+    listeners.set(el, play);
     observer.observe(el);
 
     return () => {
       listeners.delete(el);
       observer.unobserve(el);
     };
-  }, []);
+  }, [delay, y]);
 
   return (
-    <div
-      ref={ref}
-      style={{
-        transitionDelay: visible && delay ? `${delay}s` : undefined,
-        transform: visible ? "translate3d(0, 0, 0)" : `translate3d(0, ${y}px, 0)`,
-      }}
-      className={cn(
-        "transition-[transform,opacity] duration-500 ease-out motion-reduce:transform-none motion-reduce:opacity-100 motion-reduce:transition-none",
-        visible ? "opacity-100" : "opacity-0",
-        className,
-      )}
-    >
+    <div ref={ref} className={cn("opacity-100", className)}>
       {children}
     </div>
   );

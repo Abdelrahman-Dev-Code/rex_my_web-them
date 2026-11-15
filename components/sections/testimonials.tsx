@@ -43,23 +43,29 @@ export function Testimonials({ items }: { items: Testimonial[] }) {
 
           {items.length > 1 ? (
             <Reveal delay={0.06} y={16}>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => go(-1)}
-                  aria-label={t("prev")}
-                  className="inline-flex size-10 items-center justify-center rounded-full border border-border text-muted transition-colors hover:bg-surface hover:text-text"
-                >
-                  <ArrowLeft className="size-4 rtl:rotate-180" aria-hidden />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => go(1)}
-                  aria-label={t("next")}
-                  className="inline-flex size-10 items-center justify-center rounded-full border border-border text-muted transition-colors hover:bg-surface hover:text-text"
-                >
-                  <ArrowRight className="size-4 rtl:rotate-180" aria-hidden />
-                </button>
+              <div className="flex items-center gap-3">
+                <span className="text-xs font-medium tabular-nums text-muted" dir="ltr">
+                  {String(safeIndex + 1).padStart(2, "0")} /{" "}
+                  {String(items.length).padStart(2, "0")}
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => go(-1)}
+                    aria-label={t("prev")}
+                    className="inline-flex size-10 cursor-pointer items-center justify-center rounded-full border border-border text-muted transition-colors hover:bg-surface hover:text-text"
+                  >
+                    <ArrowLeft className="size-4 rtl:rotate-180" aria-hidden />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => go(1)}
+                    aria-label={t("next")}
+                    className="inline-flex size-10 cursor-pointer items-center justify-center rounded-full border border-border text-muted transition-colors hover:bg-surface hover:text-text"
+                  >
+                    <ArrowRight className="size-4 rtl:rotate-180" aria-hidden />
+                  </button>
+                </div>
               </div>
             </Reveal>
           ) : null}
@@ -99,7 +105,7 @@ export function Testimonials({ items }: { items: Testimonial[] }) {
         <div className="flex flex-wrap items-center justify-between gap-4">
           {hasAnyPlaceholder ? <p className="text-xs text-muted">{t("notice")}</p> : <span />}
           {items.length > 1 ? (
-            <ul className="flex items-center gap-2">
+            <ul className="flex items-center gap-1">
               {items.map((item, itemIndex) => (
                 <li key={`${item.initials}-${itemIndex}`}>
                   <button
@@ -107,12 +113,17 @@ export function Testimonials({ items }: { items: Testimonial[] }) {
                     onClick={() => setIndex(itemIndex)}
                     aria-label={`${itemIndex + 1}`}
                     aria-current={itemIndex === safeIndex}
-                    className={`h-2 rounded-full transition-all ${
-                      itemIndex === safeIndex
-                        ? "w-6 bg-primary"
-                        : "w-2 bg-border hover:bg-muted/50"
-                    }`}
-                  />
+                    className="inline-flex min-h-10 min-w-6 cursor-pointer items-center justify-center px-1"
+                  >
+                    <span
+                      aria-hidden
+                      className={`h-1.5 rounded-full transition-all ${
+                        itemIndex === safeIndex
+                          ? "w-6 bg-primary"
+                          : "w-2 bg-border hover:bg-muted/50"
+                      }`}
+                    />
+                  </button>
                 </li>
               ))}
             </ul>

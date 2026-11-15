@@ -30,7 +30,7 @@ service cloud.firestore {
 
     function isAdmin() {
       return isVerified() && (
-        request.auth.token.email == 'abdelrahmandevcode@gmail.com' ||
+        request.auth.token.email in ['abduarahman.naif.ali@gmail.com', 'abdelrahmandevcode@gmail.com'] ||
         exists(/databases/$(database)/documents/admins/$(request.auth.uid))
       );
     }
@@ -298,11 +298,21 @@ service cloud.firestore {
       allow delete: if isValidId(submissionId) && isAdmin();
     }
 
+    function isValidAdminUser(data) {
+      return data.keys().hasAll(['email', 'role', 'createdAt']) &&
+        data.keys().hasOnly(['email', 'role', 'createdAt']) &&
+        data.email is string && data.email.size() >= 5 && data.email.size() <= 160 &&
+        data.role == 'admin' &&
+        data.createdAt is timestamp;
+    }
+
     // Admins Collection (Admin-Only Access, Prevents Self-Assigned Roles)
     match /admins/{adminUid} {
       allow get: if isValidId(adminUid) && (isAdmin() || (isVerified() && request.auth.uid == adminUid));
       allow list: if isAdmin();
-      allow create, update, delete: if isValidId(adminUid) && isAdmin();
+      allow create: if isValidId(adminUid) && isAdmin() && isValidAdminUser(incoming()) && incoming().createdAt == request.time;
+      allow update: if isValidId(adminUid) && isAdmin() && isValidAdminUser(incoming()) && incoming().createdAt == existing().createdAt;
+      allow delete: if isValidId(adminUid) && isAdmin();
     }
   }
 }

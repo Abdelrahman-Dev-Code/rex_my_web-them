@@ -15,15 +15,11 @@ export async function Cta({ content }: { content: HomeContent }) {
   return (
     <section id="contact" className="section scroll-mt-20">
       <div className="container-page">
-        <Reveal y={40} blur>
-          <div className="surface-card group relative overflow-hidden p-8 sm:p-12">
+        <Reveal y={28}>
+          <div className="gradient-border surface-card relative overflow-hidden p-6 sm:p-10 lg:p-12">
             <div
               aria-hidden
-              className="absolute -end-24 -top-24 size-72 rounded-full bg-primary/20 blur-3xl transition-transform duration-700 group-hover:scale-125"
-            />
-            <div
-              aria-hidden
-              className="absolute -bottom-24 -start-16 size-64 rounded-full bg-accent/10 blur-3xl"
+              className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_60%_70%_at_90%_10%,color-mix(in_srgb,var(--primary)_12%,transparent),transparent_65%)]"
             />
             <div className="relative flex flex-col gap-6">
               <h2 className="max-w-2xl text-balance text-3xl font-semibold sm:text-4xl">
@@ -32,7 +28,10 @@ export async function Cta({ content }: { content: HomeContent }) {
               <p className="max-w-xl text-pretty text-muted sm:text-lg">{t("subtitle")}</p>
               <div className="flex flex-wrap items-center gap-3">
                 <Magnetic strength={0.2}>
-                  <a href={`mailto:${site.email}`} className={buttonClass("primary", "lg")}>
+                  <a
+                    href={`mailto:${site.email}`}
+                    className={buttonClass("primary", "lg", "w-full sm:w-auto")}
+                  >
                     <Mail className="size-4" aria-hidden />
                     {t("primary")}
                   </a>
@@ -42,14 +41,14 @@ export async function Cta({ content }: { content: HomeContent }) {
                     href={whatsappHref}
                     target="_blank"
                     rel="noreferrer noopener"
-                    className={buttonClass("outline", "lg")}
+                    className={buttonClass("outline", "lg", "w-full sm:w-auto")}
                   >
                     <MessageCircle className="size-4" aria-hidden />
                     {t("secondary")}
                   </a>
                 </Magnetic>
               </div>
-              <div className="flex flex-wrap items-center gap-3 text-xs text-muted">
+              <div className="flex flex-wrap items-center gap-3 border-t border-border/70 pt-4 text-xs text-muted">
                 <span dir="ltr">{site.email}</span>
                 <CopyButton
                   value={site.email}

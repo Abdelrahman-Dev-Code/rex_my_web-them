@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import {
   collection,
@@ -27,11 +27,14 @@ import {
   Sparkles,
   Users,
 } from "lucide-react";
+import firebaseConfig from "@/firebase-applet-config.json";
 import {
   aboutMission,
   aboutSecondary,
   legalContent,
+  process as defaultProcess,
   site as defaultSite,
+  stats as defaultStats,
   type LegalPage,
   type Post,
   type Project,
@@ -39,6 +42,7 @@ import {
 import { db, handleFirestoreError, OperationType } from "@/lib/firebase/client";
 import {
   deleteContactSubmission,
+  ensureAdminRecord,
   fetchCollectionFromDb,
   fetchDocByIdFromDb,
   fetchSiteSettingsFromDb,
@@ -97,13 +101,17 @@ export function StudioDashboard() {
   const [tab, setTab] = useState<TabKey>("overview");
   const [loadingData, setLoadingData] = useState(false);
   const [seeding, setSeeding] = useState(false);
+  const [cmsVersion, setCmsVersion] = useState(0);
   const [toast, setToast] = useState<{ msg: string; error?: boolean } | null>(null);
+  const bootstrappedRef = useRef<string | null>(null);
 
   // CMS State
   const [siteSettings, setSiteSettings] = useState<SiteSettingsDoc>({
     ...defaultSite,
     aboutMission,
     aboutSecondary,
+    stats: defaultStats,
+    process: defaultProcess,
   });
   const [services, setServices] = useState<ServiceDoc[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -131,56 +139,20 @@ export function StudioDashboard() {
     }, 4000);
   }, []);
 
-  const loadAllCms = useCallback(async () => {
-    setLoadingData(true);
-    try {
-      const [
-        remoteSite,
-        remoteServices,
-        remoteProjects,
-        remotePosts,
-        remoteTeam,
-        remoteTechs,
-        remoteSectors,
-        remoteTestimonials,
-        remoteFaqs,
-        remotePrivacy,
-        remoteTerms,
-      ] = await Promise.all([
-        fetchSiteSettingsFromDb(),
-        fetchCollectionFromDb<Omit<ServiceDoc, "id">>("services", "order", "asc"),
-        fetchCollectionFromDb<Project>("projects", "year", "desc"),
-        fetchCollectionFromDb<Post>("posts", "date", "desc"),
-        fetchCollectionFromDb<MemberDoc>("team", "order", "asc"),
-        fetchCollectionFromDb<Omit<TechDoc, "id">>("techStack", "name", "asc"),
-        fetchCollectionFromDb<Omit<SectorDoc, "id">>("sectors", "order", "asc"),
-        fetchCollectionFromDb<Omit<TestimonialDoc, "id">>("testimonials", "order", "asc"),
-        fetchCollectionFromDb<Omit<FaqDoc, "id">>("faqs", "order", "asc"),
-        fetchDocByIdFromDb<LegalPage>("legal", "privacy"),
-        fetchDocByIdFromDb<LegalPage>("legal", "terms"),
-      ]);
-
-      if (remoteSite) setSiteSettings(remoteSite);
-      setServices(remoteServices);
-      setProjects(remoteProjects);
-      setPosts(remotePosts);
-      setTeam(remoteTeam);
-      setTechs(remoteTechs);
-      setSectors(remoteSectors);
-      setTestimonials(remoteTestimonials);
-      setFaqs(remoteFaqs);
-      if (remotePrivacy) setPrivacyDoc(remotePrivacy);
-      if (remoteTerms) setTermsDoc(remoteTerms);
-    } finally {
-      setLoadingData(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!authReady || !user || !isAdmin) return;
-
-    let cancelled = false;
-    void Promise.all([
+  const fetchAllCmsSnapshot = useCallback(async () => {
+    const [
+      remoteSite,
+      remoteServices,
+      remoteProjects,
+      remotePosts,
+      remoteTeam,
+      remoteTechs,
+      remoteSectors,
+      remoteTestimonials,
+      remoteFaqs,
+      remotePrivacy,
+      remoteTerms,
+    ] = await Promise.all([
       fetchSiteSettingsFromDb(),
       fetchCollectionFromDb<Omit<ServiceDoc, "id">>("services", "order", "asc"),
       fetchCollectionFromDb<Project>("projects", "year", "desc"),
@@ -192,34 +164,117 @@ export function StudioDashboard() {
       fetchCollectionFromDb<Omit<FaqDoc, "id">>("faqs", "order", "asc"),
       fetchDocByIdFromDb<LegalPage>("legal", "privacy"),
       fetchDocByIdFromDb<LegalPage>("legal", "terms"),
-    ]).then(
-      ([
-        remoteSite,
-        remoteServices,
-        remoteProjects,
-        remotePosts,
-        remoteTeam,
-        remoteTechs,
-        remoteSectors,
-        remoteTestimonials,
-        remoteFaqs,
-        remotePrivacy,
-        remoteTerms,
-      ]) => {
-        if (cancelled) return;
-        if (remoteSite) setSiteSettings(remoteSite);
-        setServices(remoteServices);
-        setProjects(remoteProjects);
-        setPosts(remotePosts);
-        setTeam(remoteTeam);
-        setTechs(remoteTechs);
-        setSectors(remoteSectors);
-        setTestimonials(remoteTestimonials);
-        setFaqs(remoteFaqs);
-        if (remotePrivacy) setPrivacyDoc(remotePrivacy);
-        if (remoteTerms) setTermsDoc(remoteTerms);
-      },
-    );
+    ]);
+
+    return {
+      remoteSite,
+      remoteServices,
+      remoteProjects,
+      remotePosts,
+      remoteTeam,
+      remoteTechs,
+      remoteSectors,
+      remoteTestimonials,
+      remoteFaqs,
+      remotePrivacy,
+      remoteTerms,
+    };
+  }, []);
+
+  const applyCmsSnapshot = useCallback(
+    (snapshot: Awaited<ReturnType<typeof fetchAllCmsSnapshot>>) => {
+      if (snapshot.remoteSite) setSiteSettings(snapshot.remoteSite);
+      setServices(snapshot.remoteServices);
+      setProjects(snapshot.remoteProjects);
+      setPosts(snapshot.remotePosts);
+      setTeam(snapshot.remoteTeam);
+      setTechs(snapshot.remoteTechs);
+      setSectors(snapshot.remoteSectors);
+      setTestimonials(snapshot.remoteTestimonials);
+      setFaqs(snapshot.remoteFaqs);
+      if (snapshot.remotePrivacy) setPrivacyDoc(snapshot.remotePrivacy);
+      if (snapshot.remoteTerms) setTermsDoc(snapshot.remoteTerms);
+      setCmsVersion((v) => v + 1);
+    },
+    [],
+  );
+
+  const loadAllCms = useCallback(async () => {
+    setLoadingData(true);
+    try {
+      const snapshot = await fetchAllCmsSnapshot();
+      applyCmsSnapshot(snapshot);
+    } finally {
+      setLoadingData(false);
+    }
+  }, [fetchAllCmsSnapshot, applyCmsSnapshot]);
+
+  useEffect(() => {
+    if (!authReady || !user || !isAdmin) return;
+
+    let cancelled = false;
+
+    const bootstrapSession = async () => {
+      try {
+        await ensureAdminRecord(user.uid, user.email);
+      } catch {
+        // Non-fatal if already handled by email allowlist
+      }
+
+      const snapshot = await fetchAllCmsSnapshot();
+      if (cancelled) return;
+
+      const isDbEmpty =
+        !snapshot.remoteSite &&
+        snapshot.remoteServices.length === 0 &&
+        snapshot.remoteProjects.length === 0 &&
+        snapshot.remotePosts.length === 0 &&
+        snapshot.remoteTeam.length === 0 &&
+        snapshot.remoteTechs.length === 0 &&
+        snapshot.remoteSectors.length === 0 &&
+        snapshot.remoteTestimonials.length === 0 &&
+        snapshot.remoteFaqs.length === 0 &&
+        !snapshot.remotePrivacy &&
+        !snapshot.remoteTerms;
+
+      if (isDbEmpty && bootstrappedRef.current !== user.uid) {
+        bootstrappedRef.current = user.uid;
+        setSeeding(true);
+        try {
+          const { count } = await seedDefaultContentToFirestore();
+          await triggerRevalidation(user, [
+            "site",
+            "services",
+            "projects",
+            "posts",
+            "team",
+            "testimonials",
+            "sectors",
+            "tech",
+            "faqs",
+            "legal",
+          ]);
+          const seededSnapshot = await fetchAllCmsSnapshot();
+          if (!cancelled) {
+            applyCmsSnapshot(seededSnapshot);
+            notify(`${t("seedSuccess")} (${count})`);
+          }
+        } catch {
+          if (!cancelled) {
+            applyCmsSnapshot(snapshot);
+          }
+        } finally {
+          if (!cancelled) {
+            setSeeding(false);
+          }
+        }
+        return;
+      }
+
+      applyCmsSnapshot(snapshot);
+    };
+
+    void bootstrapSession();
 
     const q = query(collection(db, "contactSubmissions"), orderBy("createdAt", "desc"));
     const unsubscribe = onSnapshot(
@@ -239,7 +294,7 @@ export function StudioDashboard() {
       cancelled = true;
       unsubscribe();
     };
-  }, [authReady, user, isAdmin]);
+  }, [authReady, user, isAdmin, fetchAllCmsSnapshot, applyCmsSnapshot, notify, t]);
 
   const filteredSubmissions = useMemo(() => {
     const q = inboxSearch.trim().toLowerCase();
@@ -292,7 +347,7 @@ export function StudioDashboard() {
   };
 
   const handleRefreshCache = async () => {
-    await triggerRevalidation(user, [
+    const ok = await triggerRevalidation(user, [
       "site",
       "services",
       "projects",
@@ -304,7 +359,7 @@ export function StudioDashboard() {
       "faqs",
       "legal",
     ]);
-    notify(t("saved"));
+    notify(ok ? t("saved") : t("error"), !ok);
   };
 
   if (!authReady) {
@@ -530,6 +585,10 @@ export function StudioDashboard() {
                       <p className="text-xs text-muted">
                         Firestore: {dbConnected === true ? (ar ? "متصل" : "Connected") : dbConnected === false ? (ar ? "غير متصل" : "Offline") : "…"}
                       </p>
+                      <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted" dir="ltr">
+                        <span>Project: {firebaseConfig.projectId}</span>
+                        <span>Database: {firebaseConfig.firestoreDatabaseId}</span>
+                      </div>
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-3">
@@ -749,6 +808,7 @@ export function StudioDashboard() {
 
             {tab === "settings" ? (
               <SiteSettingsEditor
+                key={`settings-${cmsVersion}`}
                 initial={siteSettings}
                 user={user}
                 locale={locale}
@@ -821,6 +881,7 @@ export function StudioDashboard() {
 
             {tab === "legal" ? (
               <LegalEditor
+                key={`legal-${cmsVersion}`}
                 privacy={privacyDoc}
                 terms={termsDoc}
                 user={user}

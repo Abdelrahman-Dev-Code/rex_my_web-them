@@ -11,11 +11,11 @@ export const fieldInputClass =
 export const fieldTextareaClass =
   "min-h-24 w-full resize-y rounded-lg border border-border bg-bg-elevated px-3 py-2 text-sm leading-relaxed text-text placeholder:text-muted/60 focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40";
 
-export async function triggerRevalidation(user: User | null, tags: string[]): Promise<void> {
-  if (!user) return;
+export async function triggerRevalidation(user: User | null, tags: string[]): Promise<boolean> {
+  if (!user) return false;
   try {
     const token = await user.getIdToken();
-    await fetch("/api/revalidate", {
+    const response = await fetch("/api/revalidate", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -23,9 +23,23 @@ export async function triggerRevalidation(user: User | null, tags: string[]): Pr
       },
       body: JSON.stringify({ tags }),
     });
+    if (!response.ok) {
+      console.warn("[studio] revalidation failed with status:", response.status);
+      return false;
+    }
+    return true;
   } catch (error) {
     console.warn("[studio] revalidation request skipped:", error);
+    return false;
   }
+}
+
+export function StudioEmptyState({ message }: { message: string }) {
+  return (
+    <div className="rounded-2xl border border-dashed border-border bg-surface p-8 text-center text-sm text-muted">
+      {message}
+    </div>
+  );
 }
 
 export function slugifyAscii(value: string, fallback = "item"): string {

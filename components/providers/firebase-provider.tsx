@@ -19,8 +19,8 @@ import {
 import { doc, getDoc } from "firebase/firestore";
 import {
   auth,
-  BOOTSTRAP_ADMIN_EMAIL,
   db,
+  isBootstrapAdminEmail,
   testFirestoreConnection,
 } from "@/lib/firebase/client";
 
@@ -54,7 +54,7 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      const verifiedEmail = nextUser.emailVerified && nextUser.email === BOOTSTRAP_ADMIN_EMAIL;
+      const verifiedEmail = nextUser.emailVerified && isBootstrapAdminEmail(nextUser.email);
       if (verifiedEmail) {
         setIsAdmin(true);
         setAuthReady(true);
@@ -81,7 +81,21 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
       provider.setCustomParameters({ prompt: "select_account" });
       await signInWithPopup(auth, provider);
     } catch (error) {
-      setAuthError(error instanceof Error ? error.message : "Authentication failed");
+      const code =
+        typeof error === "object" && error !== null && "code" in error
+          ? String((error as { code?: unknown }).code)
+          : "";
+      if (code === "auth/popup-blocked") {
+        setAuthError(
+          "تم حظر نافذة تسجيل الدخول المنبثقة. يرجى السماح بالنوافذ المنبثقة لهذا الموقع ثم المحاولة مجدداً. / Sign-in popup was blocked by your browser; allow popups and try again.",
+        );
+      } else if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") {
+        setAuthError(
+          "تم إغلاق نافذة تسجيل الدخول قبل إتمام العملية. / Sign-in popup was closed before completing.",
+        );
+      } else {
+        setAuthError(error instanceof Error ? error.message : "Authentication failed");
+      }
     }
   }, []);
 

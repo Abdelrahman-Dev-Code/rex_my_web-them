@@ -38,6 +38,7 @@ import {
   hasLocalizedText,
   LocalizedFieldPair,
   slugifyAscii,
+  StudioEmptyState,
   triggerRevalidation,
 } from "./studio-helpers";
 
@@ -65,12 +66,26 @@ export function SiteSettingsEditor({
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    const emailTrimmed = form.email.trim();
+    const normalizedWhatsapp = form.whatsapp.replace(/\D+/g, "");
+    const validEmail =
+      emailTrimmed.length >= 5 &&
+      emailTrimmed.length <= 160 &&
+      /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailTrimmed);
+    const validWhatsapp = normalizedWhatsapp.length >= 6 && normalizedWhatsapp.length <= 20;
+    const validSocials = form.socials.every(
+      (s) => s.label.trim().length > 0 && /^https?:\/\/.+/.test(s.href.trim()),
+    );
     const validStats = statsList.every(
-      (item) => item.value.trim().length >= 1 && hasLocalizedText(item.label),
+      (item) =>
+        item.value.trim().length >= 1 &&
+        item.value.trim().length <= 20 &&
+        hasLocalizedText(item.label),
     );
     const validProcess = processList.every(
       (item) =>
         item.number.trim().length >= 1 &&
+        item.number.trim().length <= 10 &&
         hasLocalizedText(item.title) &&
         hasLocalizedText(item.description),
     );
@@ -81,15 +96,16 @@ export function SiteSettingsEditor({
       !hasLocalizedText(form.tagline) ||
       !hasLocalizedText(form.shortTagline) ||
       !hasLocalizedText(form.location) ||
-      form.email.trim().length < 5 ||
-      form.whatsapp.trim().length < 6 ||
+      !validEmail ||
+      !validWhatsapp ||
+      !validSocials ||
       !validStats ||
       !validProcess
     ) {
       notify(
         ar
-          ? "تأكد من ملء جميع الحقول الأساسية والإحصائيات وخطوات العمل بالعربية والإنجليزية وبريد ورقم واتساب صحيحين."
-          : "Please complete all required Arabic and English fields, stats, process steps, email, and WhatsApp number.",
+          ? "تأكد من ملء جميع الحقول الأساسية والإحصائيات وخطوات العمل بالعربية والإنجليزية، وبريد ورقم واتساب (6–20 رقماً) وروابط تبدأ بـ https://."
+          : "Please complete all Arabic/English fields, stats, process steps, valid email, WhatsApp (6–20 digits), and valid social URLs.",
         true,
       );
       return;
@@ -97,7 +113,16 @@ export function SiteSettingsEditor({
 
     setSaving(true);
     try {
-      await saveSiteSettings(form);
+      const cleanedForm: SiteSettingsDoc = {
+        ...form,
+        email: emailTrimmed,
+        whatsapp: normalizedWhatsapp,
+        socials: form.socials.map((s) => ({
+          label: s.label.trim(),
+          href: s.href.trim(),
+        })),
+      };
+      await saveSiteSettings(cleanedForm);
       await triggerRevalidation(user, ["site"]);
       await onSaved();
       notify(ar ? "تم حفظ إعدادات الموقع" : "Site settings saved");
@@ -500,27 +525,37 @@ export function ServicesEditor({
         </form>
       ) : null}
 
-      <ul className="grid gap-3 sm:grid-cols-2">
-        {items.map((item) => (
-          <li key={item.id} className="flex items-start justify-between gap-3 rounded-xl border border-border bg-surface p-4">
-            <div className="flex flex-col gap-1">
-              <span className="text-xs text-muted tabular-nums">#{item.order} · {item.icon}</span>
-              <span className="font-medium">{ar ? item.title.ar : item.title.en}</span>
-              <span className="line-clamp-2 text-xs text-muted">{ar ? item.description.ar : item.description.en}</span>
-            </div>
-            <div className="flex shrink-0 items-center gap-1">
-              <button
-                type="button"
-                onClick={() => setEditing(item)}
-                className="rounded-lg border border-border px-2.5 py-1.5 text-xs hover:bg-surface-2"
-              >
-                {ar ? "تعديل" : "Edit"}
-              </button>
-              <ConfirmDeleteButton locale={locale} onConfirm={() => handleDelete(item.id)} />
-            </div>
-          </li>
-        ))}
-      </ul>
+      {items.length === 0 ? (
+        <StudioEmptyState
+          message={
+            ar
+              ? "لا توجد خدمات محفوظة في Firestore بعد. أضف خدمة جديدة أو زامن المحتوى الافتراضي من تبويب نظرة عامة."
+              : "No services saved in Firestore yet. Add a service or sync defaults from the Overview tab."
+          }
+        />
+      ) : (
+        <ul className="grid gap-3 sm:grid-cols-2">
+          {items.map((item) => (
+            <li key={item.id} className="flex items-start justify-between gap-3 rounded-xl border border-border bg-surface p-4">
+              <div className="flex flex-col gap-1">
+                <span className="text-xs text-muted tabular-nums">#{item.order} · {item.icon}</span>
+                <span className="font-medium">{ar ? item.title.ar : item.title.en}</span>
+                <span className="line-clamp-2 text-xs text-muted">{ar ? item.description.ar : item.description.en}</span>
+              </div>
+              <div className="flex shrink-0 items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setEditing(item)}
+                  className="rounded-lg border border-border px-2.5 py-1.5 text-xs hover:bg-surface-2"
+                >
+                  {ar ? "تعديل" : "Edit"}
+                </button>
+                <ConfirmDeleteButton locale={locale} onConfirm={() => handleDelete(item.id)} />
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
@@ -540,9 +575,11 @@ export function ProjectsEditor({
 }) {
   const ar = locale === "ar";
   const [editing, setEditing] = useState<Project | null>(null);
+  const [originalSlug, setOriginalSlug] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const startNew = () =>
+  const startNew = () => {
+    setOriginalSlug(null);
     setEditing({
       slug: `project-${Date.now().toString(36)}`,
       title: { ar: "", en: "" },
@@ -558,11 +595,15 @@ export function ProjectsEditor({
       stack: ["Next.js", "TypeScript"],
       placeholder: false,
     });
+  };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editing) return;
+    const yearTrimmed = editing.year.trim();
     if (
+      yearTrimmed.length < 4 ||
+      yearTrimmed.length > 10 ||
       !hasLocalizedText(editing.title) ||
       !hasLocalizedText(editing.summary) ||
       !hasLocalizedText(editing.category) ||
@@ -573,7 +614,9 @@ export function ProjectsEditor({
       !hasLocalizedText(editing.solution)
     ) {
       notify(
-        ar ? "يرجى استكمال جميع الحقول النصية بالعربية والإنجليزية" : "Please complete all localized project fields",
+        ar
+          ? "يرجى استكمال السنة (4–10 أحرف) وجميع الحقول النصية بالعربية والإنجليزية"
+          : "Please provide a valid year (4–10 chars) and complete all localized project fields",
         true,
       );
       return;
@@ -585,10 +628,14 @@ export function ProjectsEditor({
       const cleanResults = editing.results.filter(
         (r) => r.value.trim().length > 0 && hasLocalizedText(r.label),
       );
-      await saveProject({ ...editing, slug: normalizedSlug, results: cleanResults });
+      await saveProject({ ...editing, year: yearTrimmed, slug: normalizedSlug, results: cleanResults });
+      if (originalSlug && originalSlug !== normalizedSlug) {
+        await deleteCmsDocument("projects", originalSlug);
+      }
       await triggerRevalidation(user, ["projects"]);
       await onSaved();
       setEditing(null);
+      setOriginalSlug(null);
       notify(ar ? "تم حفظ المشروع" : "Project saved");
     } catch {
       notify(ar ? "تعذر حفظ المشروع" : "Failed to save project", true);
@@ -782,27 +829,40 @@ export function ProjectsEditor({
         </form>
       ) : null}
 
-      <ul className="grid gap-3 sm:grid-cols-2">
-        {items.map((item) => (
-          <li key={item.slug} className="flex items-start justify-between gap-3 rounded-xl border border-border bg-surface p-4">
-            <div className="flex flex-col gap-1">
-              <span className="text-xs text-muted tabular-nums">{item.year} · {ar ? item.category.ar : item.category.en}</span>
-              <span className="font-medium">{ar ? item.title.ar : item.title.en}</span>
-              <span className="line-clamp-2 text-xs text-muted">{ar ? item.summary.ar : item.summary.en}</span>
-            </div>
-            <div className="flex shrink-0 items-center gap-1">
-              <button
-                type="button"
-                onClick={() => setEditing(item)}
-                className="rounded-lg border border-border px-2.5 py-1.5 text-xs hover:bg-surface-2"
-              >
-                {ar ? "تعديل" : "Edit"}
-              </button>
-              <ConfirmDeleteButton locale={locale} onConfirm={() => handleDelete(item.slug)} />
-            </div>
-          </li>
-        ))}
-      </ul>
+      {items.length === 0 ? (
+        <StudioEmptyState
+          message={
+            ar
+              ? "لا توجد مشاريع محفوظة في Firestore بعد. أضف مشروعاً جديداً أو زامن المحتوى الافتراضي من تبويب نظرة عامة."
+              : "No projects saved in Firestore yet. Add a project or sync defaults from the Overview tab."
+          }
+        />
+      ) : (
+        <ul className="grid gap-3 sm:grid-cols-2">
+          {items.map((item) => (
+            <li key={item.slug} className="flex items-start justify-between gap-3 rounded-xl border border-border bg-surface p-4">
+              <div className="flex flex-col gap-1">
+                <span className="text-xs text-muted tabular-nums">{item.year} · {ar ? item.category.ar : item.category.en}</span>
+                <span className="font-medium">{ar ? item.title.ar : item.title.en}</span>
+                <span className="line-clamp-2 text-xs text-muted">{ar ? item.summary.ar : item.summary.en}</span>
+              </div>
+              <div className="flex shrink-0 items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOriginalSlug(item.slug);
+                    setEditing(item);
+                  }}
+                  className="rounded-lg border border-border px-2.5 py-1.5 text-xs hover:bg-surface-2"
+                >
+                  {ar ? "تعديل" : "Edit"}
+                </button>
+                <ConfirmDeleteButton locale={locale} onConfirm={() => handleDelete(item.slug)} />
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
@@ -822,9 +882,11 @@ export function PostsEditor({
 }) {
   const ar = locale === "ar";
   const [editing, setEditing] = useState<Post | null>(null);
+  const [originalSlug, setOriginalSlug] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const startNew = () =>
+  const startNew = () => {
+    setOriginalSlug(null);
     setEditing({
       slug: `post-${Date.now().toString(36)}`,
       title: { ar: "", en: "" },
@@ -835,19 +897,30 @@ export function PostsEditor({
       body: [{ ar: "", en: "" }],
       placeholder: false,
     });
+  };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editing) return;
     const validBody = editing.body.filter((p) => hasLocalizedText(p));
+    const dateTrimmed = editing.date.trim();
+    const readingMinutesValid =
+      Number.isFinite(editing.readingMinutes) &&
+      editing.readingMinutes >= 1 &&
+      editing.readingMinutes <= 120;
     if (
+      dateTrimmed.length < 8 ||
+      dateTrimmed.length > 32 ||
+      !readingMinutesValid ||
       !hasLocalizedText(editing.title) ||
       !hasLocalizedText(editing.excerpt) ||
       !hasLocalizedText(editing.tag) ||
       validBody.length === 0
     ) {
       notify(
-        ar ? "العنوان والتصنيف والمقتطف وفقرة واحدة على الأقل مطلوبة باللغتين" : "Title, tag, excerpt, and at least one paragraph are required in both languages",
+        ar
+          ? "التاريخ (YYYY-MM-DD) ومدة القراءة (1–120) والعنوان والتصنيف والمقتطف وفقرة واحدة على الأقل مطلوبة"
+          : "Valid date, reading minutes (1–120), title, tag, excerpt, and at least one paragraph are required",
         true,
       );
       return;
@@ -856,10 +929,14 @@ export function PostsEditor({
     setSaving(true);
     try {
       const normalizedSlug = slugifyAscii(editing.slug || editing.title.en, "post");
-      await savePost({ ...editing, slug: normalizedSlug, body: validBody });
+      await savePost({ ...editing, date: dateTrimmed, slug: normalizedSlug, body: validBody });
+      if (originalSlug && originalSlug !== normalizedSlug) {
+        await deleteCmsDocument("posts", originalSlug);
+      }
       await triggerRevalidation(user, ["posts"]);
       await onSaved();
       setEditing(null);
+      setOriginalSlug(null);
       notify(ar ? "تم حفظ المقال" : "Post saved");
     } catch {
       notify(ar ? "تعذر حفظ المقال" : "Failed to save post", true);
@@ -1003,26 +1080,39 @@ export function PostsEditor({
         </form>
       ) : null}
 
-      <ul className="flex flex-col gap-2">
-        {items.map((item) => (
-          <li key={item.slug} className="flex items-center justify-between gap-3 rounded-xl border border-border bg-surface p-4">
-            <div className="flex flex-col gap-0.5">
-              <span className="text-xs text-muted tabular-nums">{item.date} · {ar ? item.tag.ar : item.tag.en}</span>
-              <span className="font-medium">{ar ? item.title.ar : item.title.en}</span>
-            </div>
-            <div className="flex shrink-0 items-center gap-1">
-              <button
-                type="button"
-                onClick={() => setEditing(item)}
-                className="rounded-lg border border-border px-2.5 py-1.5 text-xs hover:bg-surface-2"
-              >
-                {ar ? "تعديل" : "Edit"}
-              </button>
-              <ConfirmDeleteButton locale={locale} onConfirm={() => handleDelete(item.slug)} />
-            </div>
-          </li>
-        ))}
-      </ul>
+      {items.length === 0 ? (
+        <StudioEmptyState
+          message={
+            ar
+              ? "لا توجد مقالات محفوظة في Firestore بعد. أضف مقالاً جديداً أو زامن المحتوى الافتراضي من تبويب نظرة عامة."
+              : "No blog posts saved in Firestore yet. Add a post or sync defaults from the Overview tab."
+          }
+        />
+      ) : (
+        <ul className="flex flex-col gap-2">
+          {items.map((item) => (
+            <li key={item.slug} className="flex items-center justify-between gap-3 rounded-xl border border-border bg-surface p-4">
+              <div className="flex flex-col gap-0.5">
+                <span className="text-xs text-muted tabular-nums">{item.date} · {ar ? item.tag.ar : item.tag.en}</span>
+                <span className="font-medium">{ar ? item.title.ar : item.title.en}</span>
+              </div>
+              <div className="flex shrink-0 items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOriginalSlug(item.slug);
+                    setEditing(item);
+                  }}
+                  className="rounded-lg border border-border px-2.5 py-1.5 text-xs hover:bg-surface-2"
+                >
+                  {ar ? "تعديل" : "Edit"}
+                </button>
+                <ConfirmDeleteButton locale={locale} onConfirm={() => handleDelete(item.slug)} />
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
@@ -1042,9 +1132,11 @@ export function TeamEditor({
 }) {
   const ar = locale === "ar";
   const [editing, setEditing] = useState<MemberDoc | null>(null);
+  const [originalSlug, setOriginalSlug] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const startNew = () =>
+  const startNew = () => {
+    setOriginalSlug(null);
     setEditing({
       slug: `member-${Date.now().toString(36)}`,
       order: items.length + 1,
@@ -1056,12 +1148,15 @@ export function TeamEditor({
       stack: ["TypeScript"],
       placeholder: false,
     });
+  };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editing) return;
+    const initialsTrimmed = editing.initials.trim();
     if (
-      !editing.initials.trim() ||
+      initialsTrimmed.length < 1 ||
+      initialsTrimmed.length > 6 ||
       !editing.name ||
       !hasLocalizedText(editing.name) ||
       !hasLocalizedText(editing.role) ||
@@ -1069,8 +1164,8 @@ export function TeamEditor({
     ) {
       notify(
         ar
-          ? "الأحرف الأولى والاسم والدور والتركيز مطلوبة باللغتين"
-          : "Initials, name, role, and focus are required in both languages",
+          ? "الأحرف الأولى (1–6 أحرف) والاسم والدور والتركيز مطلوبة باللغتين"
+          : "Initials (1–6 chars), name, role, and focus are required in both languages",
         true,
       );
       return;
@@ -1082,12 +1177,17 @@ export function TeamEditor({
       const cleanResponsibilities = editing.responsibilities.filter((r) => hasLocalizedText(r));
       await saveMember({
         ...editing,
+        initials: initialsTrimmed,
         slug: normalizedSlug,
         responsibilities: cleanResponsibilities,
       });
+      if (originalSlug && originalSlug !== normalizedSlug) {
+        await deleteCmsDocument("team", originalSlug);
+      }
       await triggerRevalidation(user, ["team"]);
       await onSaved();
       setEditing(null);
+      setOriginalSlug(null);
       notify(ar ? "تم حفظ العضو" : "Member saved");
     } catch {
       notify(ar ? "تعذر حفظ العضو" : "Failed to save member", true);
@@ -1249,33 +1349,46 @@ export function TeamEditor({
         </form>
       ) : null}
 
-      <ul className="grid gap-3 sm:grid-cols-2">
-        {items.map((item) => {
-          const displayName = item.name ? (ar ? item.name.ar : item.name.en) : "";
-          const displayRole = ar ? item.role.ar : item.role.en;
-          return (
-            <li key={item.slug} className="flex items-start justify-between gap-3 rounded-xl border border-border bg-surface p-4">
-              <div className="flex flex-col gap-1">
-                <span className="text-xs text-muted">{item.initials} · #{item.order}</span>
-                <span className="font-medium">
-                  {displayName ? `${displayName} — ${displayRole}` : displayRole}
-                </span>
-                <span className="line-clamp-2 text-xs text-muted">{ar ? item.focus.ar : item.focus.en}</span>
-              </div>
-              <div className="flex shrink-0 items-center gap-1">
-                <button
-                  type="button"
-                  onClick={() => setEditing({ ...item, name: item.name ?? { ar: "", en: "" } })}
-                  className="rounded-lg border border-border px-2.5 py-1.5 text-xs hover:bg-surface-2"
-                >
-                  {ar ? "تعديل" : "Edit"}
-                </button>
-                <ConfirmDeleteButton locale={locale} onConfirm={() => handleDelete(item.slug)} />
-              </div>
-            </li>
-          );
-        })}
-      </ul>
+      {items.length === 0 ? (
+        <StudioEmptyState
+          message={
+            ar
+              ? "لا توجد ملفات فريق محفوظة في Firestore بعد. أضف عضواً جديداً أو زامن المحتوى الافتراضي من تبويب نظرة عامة."
+              : "No team members saved in Firestore yet. Add a member or sync defaults from the Overview tab."
+          }
+        />
+      ) : (
+        <ul className="grid gap-3 sm:grid-cols-2">
+          {items.map((item) => {
+            const displayName = item.name ? (ar ? item.name.ar : item.name.en) : "";
+            const displayRole = ar ? item.role.ar : item.role.en;
+            return (
+              <li key={item.slug} className="flex items-start justify-between gap-3 rounded-xl border border-border bg-surface p-4">
+                <div className="flex flex-col gap-1">
+                  <span className="text-xs text-muted">{item.initials} · #{item.order}</span>
+                  <span className="font-medium">
+                    {displayName ? `${displayName} — ${displayRole}` : displayRole}
+                  </span>
+                  <span className="line-clamp-2 text-xs text-muted">{ar ? item.focus.ar : item.focus.en}</span>
+                </div>
+                <div className="flex shrink-0 items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOriginalSlug(item.slug);
+                      setEditing({ ...item, name: item.name ?? { ar: "", en: "" } });
+                    }}
+                    className="rounded-lg border border-border px-2.5 py-1.5 text-xs hover:bg-surface-2"
+                  >
+                    {ar ? "تعديل" : "Edit"}
+                  </button>
+                  <ConfirmDeleteButton locale={locale} onConfirm={() => handleDelete(item.slug)} />
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </div>
   );
 }
@@ -1400,34 +1513,48 @@ export function TechEditor({
         </form>
       ) : null}
 
-      <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-        {items.map((item) => (
-          <li key={item.id} className="flex items-center justify-between gap-2 rounded-xl border border-border bg-surface p-3.5">
-            <div>
-              <p className="text-sm font-medium">{item.name}</p>
-              <p className="text-xs text-muted">{item.group} · {ar ? item.category.ar : item.category.en}</p>
-            </div>
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={() => setEditing(item)}
-                className="rounded-lg border border-border px-2 py-1 text-xs hover:bg-surface-2"
-              >
-                {ar ? "تعديل" : "Edit"}
-              </button>
-              <ConfirmDeleteButton
-                locale={locale}
-                onConfirm={async () => {
-                  await deleteCmsDocument("techStack", item.id);
-                  await triggerRevalidation(user, ["tech"]);
-                  await onSaved();
-                  notify(ar ? "تم الحذف" : "Deleted");
-                }}
-              />
-            </div>
-          </li>
-        ))}
-      </ul>
+      {items.length === 0 ? (
+        <StudioEmptyState
+          message={
+            ar
+              ? "لا توجد تقنيات محفوظة في Firestore بعد. أضف تقنية جديدة أو زامن المحتوى الافتراضي من تبويب نظرة عامة."
+              : "No tech items saved in Firestore yet. Add a tech item or sync defaults from the Overview tab."
+          }
+        />
+      ) : (
+        <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          {items.map((item) => (
+            <li key={item.id} className="flex items-center justify-between gap-2 rounded-xl border border-border bg-surface p-3.5">
+              <div>
+                <p className="text-sm font-medium">{item.name}</p>
+                <p className="text-xs text-muted">{item.group} · {ar ? item.category.ar : item.category.en}</p>
+              </div>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setEditing(item)}
+                  className="rounded-lg border border-border px-2 py-1 text-xs hover:bg-surface-2"
+                >
+                  {ar ? "تعديل" : "Edit"}
+                </button>
+                <ConfirmDeleteButton
+                  locale={locale}
+                  onConfirm={async () => {
+                    try {
+                      await deleteCmsDocument("techStack", item.id);
+                      await triggerRevalidation(user, ["tech"]);
+                      await onSaved();
+                      notify(ar ? "تم الحذف" : "Deleted");
+                    } catch {
+                      notify(ar ? "تعذر الحذف" : "Failed to delete", true);
+                    }
+                  }}
+                />
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
@@ -1513,10 +1640,14 @@ export function ExtrasEditor({
                 <ConfirmDeleteButton
                   locale={locale}
                   onConfirm={async () => {
-                    await deleteCmsDocument("faqs", faq.id);
-                    await triggerRevalidation(user, ["faqs"]);
-                    await onSaved();
-                    notify(ar ? "تم الحذف" : "Deleted");
+                    try {
+                      await deleteCmsDocument("faqs", faq.id);
+                      await triggerRevalidation(user, ["faqs"]);
+                      await onSaved();
+                      notify(ar ? "تم الحذف" : "Deleted");
+                    } catch {
+                      notify(ar ? "تعذر الحذف" : "Failed to delete", true);
+                    }
                   }}
                 />
               </div>
@@ -1589,10 +1720,14 @@ export function ExtrasEditor({
                 <ConfirmDeleteButton
                   locale={locale}
                   onConfirm={async () => {
-                    await deleteCmsDocument("sectors", s.id);
-                    await triggerRevalidation(user, ["sectors"]);
-                    await onSaved();
-                    notify(ar ? "تم الحذف" : "Deleted");
+                    try {
+                      await deleteCmsDocument("sectors", s.id);
+                      await triggerRevalidation(user, ["sectors"]);
+                      await onSaved();
+                      notify(ar ? "تم الحذف" : "Deleted");
+                    } catch {
+                      notify(ar ? "تعذر الحذف" : "Failed to delete", true);
+                    }
                   }}
                 />
               </div>
@@ -1689,10 +1824,14 @@ export function ExtrasEditor({
                 <ConfirmDeleteButton
                   locale={locale}
                   onConfirm={async () => {
-                    await deleteCmsDocument("testimonials", item.id);
-                    await triggerRevalidation(user, ["testimonials"]);
-                    await onSaved();
-                    notify(ar ? "تم الحذف" : "Deleted");
+                    try {
+                      await deleteCmsDocument("testimonials", item.id);
+                      await triggerRevalidation(user, ["testimonials"]);
+                      await onSaved();
+                      notify(ar ? "تم الحذف" : "Deleted");
+                    } catch {
+                      notify(ar ? "تعذر الحذف" : "Failed to delete", true);
+                    }
                   }}
                 />
               </div>

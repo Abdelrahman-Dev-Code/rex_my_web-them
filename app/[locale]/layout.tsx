@@ -134,14 +134,15 @@ export default async function LocaleLayout({
   ];
 
   return (
-    <ThemeProvider>
-      <html
-        lang={locale}
-        dir={locale === "ar" ? "rtl" : "ltr"}
-        className="h-full"
-        suppressHydrationWarning
-      >
-        <body className="flex min-h-full flex-col antialiased">
+    <html
+      lang={locale}
+      dir={locale === "ar" ? "rtl" : "ltr"}
+      data-scroll-behavior="smooth"
+      className="h-full"
+      suppressHydrationWarning
+    >
+      <body className="flex min-h-full flex-col antialiased">
+        <ThemeProvider>
           <NextIntlClientProvider>
             <a
               href="#main"
@@ -202,8 +203,8 @@ export default async function LocaleLayout({
             </main>
             <Footer nav={navItems} locale={locale} site={site} />
           </NextIntlClientProvider>
-        </body>
-      </html>
-    </ThemeProvider>
+        </ThemeProvider>
+      </body>
+    </html>
   );
 }

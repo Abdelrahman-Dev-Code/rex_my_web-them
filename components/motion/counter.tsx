@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 
 type CounterProps = {
-  value: number;
+  value: number | string;
   suffix?: string;
   className?: string;
   duration?: number;
@@ -11,10 +11,14 @@ type CounterProps = {
 
 export function Counter({ value, suffix = "", className, duration = 1.2 }: CounterProps) {
   const ref = useRef<HTMLSpanElement>(null);
+  const raw = String(value).trim();
+  const numericValue = Number(raw);
+  const isNumeric = raw.length > 0 && Number.isFinite(numericValue);
+  const decimals = isNumeric && raw.includes(".") ? raw.split(".")[1].length : 0;
 
   useEffect(() => {
     const el = ref.current;
-    if (!el) return;
+    if (!el || !isNumeric) return;
 
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       return;
@@ -28,7 +32,13 @@ export function Counter({ value, suffix = "", className, duration = 1.2 }: Count
       const step = (now: number) => {
         const elapsed = Math.min(1, (now - start) / totalMs);
         const eased = 1 - Math.pow(1 - elapsed, 3);
-        el.textContent = `${Math.round(eased * value)}${suffix}`;
+        const current =
+          elapsed >= 1
+            ? raw
+            : decimals > 0
+              ? (eased * numericValue).toFixed(decimals)
+              : String(Math.round(eased * numericValue));
+        el.textContent = `${current}${suffix}`;
         if (elapsed < 1) {
           rafId = window.requestAnimationFrame(step);
         }
@@ -59,11 +69,11 @@ export function Counter({ value, suffix = "", className, duration = 1.2 }: Count
       observer.disconnect();
       if (rafId) window.cancelAnimationFrame(rafId);
     };
-  }, [value, suffix, duration]);
+  }, [raw, numericValue, isNumeric, decimals, suffix, duration]);
 
   return (
     <span ref={ref} className={className} dir="ltr">
-      {value}
+      {raw}
       {suffix}
     </span>
   );

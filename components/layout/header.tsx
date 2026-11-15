@@ -22,8 +22,33 @@ export function Header({ nav, siteName, paletteItems }: HeaderProps) {
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [hidden, setHidden] = useState(false);
+  const headerRef = useRef<HTMLElement>(null);
   const barRef = useRef<HTMLDivElement>(null);
   const stateRef = useRef({ scrolled: false, hidden: false, lastY: 0, raf: 0 });
+
+  useEffect(() => {
+    if (!open) return;
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setOpen(false);
+      }
+    };
+
+    const onPointerDown = (event: PointerEvent) => {
+      if (headerRef.current && !headerRef.current.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("pointerdown", onPointerDown);
+
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("pointerdown", onPointerDown);
+    };
+  }, [open]);
 
   useEffect(() => {
     const state = stateRef.current;
@@ -75,25 +100,32 @@ export function Header({ nav, siteName, paletteItems }: HeaderProps) {
 
   return (
     <header
+      ref={headerRef}
       className={cn(
         "fixed inset-x-0 top-0 z-50 transition-[transform,background-color,border-color,box-shadow] duration-300",
         hidden && !open ? "-translate-y-full" : "translate-y-0",
-        scrolled
-          ? "border-b border-border bg-bg/80 shadow-lg shadow-black/10 backdrop-blur-xl"
-          : "border-b border-transparent bg-gradient-to-b from-bg/90 via-bg/50 to-transparent",
+        scrolled || open
+          ? "border-b border-border bg-bg/90 shadow-lg shadow-black/10 backdrop-blur-xl"
+          : "border-b border-transparent bg-gradient-to-b from-bg/92 via-bg/55 to-transparent",
       )}
     >
       <div
         className={cn(
-          "container-page flex items-center justify-between gap-6 transition-[height] duration-300",
+          "container-page flex items-center justify-between gap-4 lg:gap-8 transition-[height] duration-300",
           scrolled ? "h-16" : "h-16 md:h-20",
         )}
       >
-        <Link href="/" className="flex shrink-0 items-center gap-2.5 whitespace-nowrap" aria-label={t("nav.home")}>
+        {/* Zone 1: Brand wordmark */}
+        <Link
+          href="/"
+          onClick={() => setOpen(false)}
+          className="flex shrink-0 items-center gap-2.5 whitespace-nowrap"
+          aria-label={t("nav.home")}
+        >
           <span
             aria-hidden
             className={cn(
-              "grid place-items-center bg-primary font-bold text-primary-fg transition-all duration-300",
+              "grid place-items-center bg-primary font-bold tracking-tight text-primary-fg transition-all duration-300",
               scrolled ? "size-8 rounded-lg text-xs" : "size-9 rounded-xl text-sm",
             )}
           >
@@ -104,7 +136,8 @@ export function Header({ nav, siteName, paletteItems }: HeaderProps) {
           </span>
         </Link>
 
-        <nav aria-label={t("common.menu")} className="hidden items-center gap-1 md:flex">
+        {/* Zone 2: Primary navigation (desktop >= lg for zero tablet crowding) */}
+        <nav aria-label={t("common.menu")} className="hidden items-center gap-1 lg:flex">
           {nav.map((item) => {
             const active =
               item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
@@ -114,17 +147,15 @@ export function Header({ nav, siteName, paletteItems }: HeaderProps) {
                 href={item.href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "group relative whitespace-nowrap shrink-0 px-3.5 py-2 text-sm transition-colors",
-                  active
-                    ? "text-text font-medium"
-                    : "text-muted hover:text-text",
+                  "group relative shrink-0 whitespace-nowrap px-3.5 py-2 text-sm transition-colors duration-200",
+                  active ? "font-medium text-text" : "text-muted hover:text-text",
                 )}
               >
                 {t(`nav.${item.key}`)}
                 <span
                   aria-hidden
                   className={cn(
-                    "absolute inset-x-3.5 bottom-1 h-px bg-gradient-to-r from-transparent via-primary to-transparent transition-transform duration-300",
+                    "absolute inset-x-3.5 bottom-1 h-px bg-gradient-to-r from-transparent via-primary to-transparent transition-transform duration-200",
                     active ? "scale-x-100" : "scale-x-0 group-hover:scale-x-100",
                   )}
                 />
@@ -133,13 +164,18 @@ export function Header({ nav, siteName, paletteItems }: HeaderProps) {
           })}
         </nav>
 
-        <div className="flex shrink-0 items-center gap-2">
+        {/* Zone 3: Utilities + Primary CTA */}
+        <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
           <CommandPalette items={paletteItems} />
           <LocaleSwitcher />
           <ThemeToggle />
           <Link
             href="/contact"
-            className={buttonClass("primary", scrolled ? "sm" : "md", "hidden whitespace-nowrap shrink-0 sm:inline-flex")}
+            className={buttonClass(
+              "primary",
+              scrolled ? "sm" : "md",
+              "hidden shrink-0 whitespace-nowrap lg:inline-flex",
+            )}
           >
             {t("nav.contact")}
           </Link>
@@ -149,7 +185,7 @@ export function Header({ nav, siteName, paletteItems }: HeaderProps) {
             aria-expanded={open}
             aria-controls="mobile-nav"
             aria-label={open ? t("common.close") : t("common.menu")}
-            className="inline-flex size-10 items-center justify-center rounded-full border border-border text-muted transition-colors hover:bg-surface hover:text-text md:hidden"
+            className="inline-flex size-10 shrink-0 cursor-pointer items-center justify-center rounded-full border border-border text-muted transition-colors hover:bg-surface hover:text-text lg:hidden"
           >
             {open ? <X className="size-5" /> : <Menu className="size-5" />}
           </button>
@@ -166,19 +202,46 @@ export function Header({ nav, siteName, paletteItems }: HeaderProps) {
       {open ? (
         <div
           id="mobile-nav"
-          className="motion-safe:animate-menu-in border-t border-border bg-bg/95 backdrop-blur-md md:hidden"
+          className="motion-safe:animate-menu-in max-h-[calc(100dvh-4rem)] overflow-y-auto border-t border-border bg-bg/96 backdrop-blur-xl lg:hidden"
         >
-          <nav className="container-page flex flex-col py-3">
-            {nav.map((item) => (
+          <nav className="container-page flex flex-col gap-1 py-4">
+            {nav.map((item) => {
+              const active =
+                item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
+              return (
+                <Link
+                  key={item.key}
+                  href={item.href}
+                  aria-current={active ? "page" : undefined}
+                  onClick={() => setOpen(false)}
+                  className={cn(
+                    "flex min-h-11 items-center rounded-xl px-3.5 py-2.5 text-sm transition-colors",
+                    active
+                      ? "bg-surface font-medium text-text"
+                      : "text-muted hover:bg-surface hover:text-text",
+                  )}
+                >
+                  {t(`nav.${item.key}`)}
+                </Link>
+              );
+            })}
+            <div className="my-1.5 border-t border-border" />
+            <div className="grid grid-cols-2 gap-2">
               <Link
-                key={item.key}
-                href={item.href}
+                href="/search"
                 onClick={() => setOpen(false)}
-                className="rounded-xl px-3 py-3 text-sm text-muted hover:bg-surface hover:text-text"
+                className="flex min-h-11 items-center rounded-xl px-3.5 py-2.5 text-sm text-muted transition-colors hover:bg-surface hover:text-text"
               >
-                {t(`nav.${item.key}`)}
+                {t("search.label")}
               </Link>
-            ))}
+              <Link
+                href="/studio"
+                onClick={() => setOpen(false)}
+                className="flex min-h-11 items-center rounded-xl px-3.5 py-2.5 text-sm text-muted transition-colors hover:bg-surface hover:text-text"
+              >
+                {t("studio.title")}
+              </Link>
+            </div>
             <Link
               href="/contact"
               onClick={() => setOpen(false)}

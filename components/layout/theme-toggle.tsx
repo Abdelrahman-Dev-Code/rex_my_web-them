@@ -16,15 +16,17 @@ export function ThemeToggle() {
     () => false,
   );
 
-  const isDark = resolvedTheme !== "light";
+  const isDark = !mounted || resolvedTheme !== "light";
+  const label = `${t("theme")}: ${isDark ? t("dark") : t("light")}`;
 
   return (
     <button
       type="button"
       onClick={() => setTheme(isDark ? "light" : "dark")}
-      aria-label={`${t("theme")}: ${isDark ? t("dark") : t("light")}`}
-      title={`${t("theme")}: ${isDark ? t("dark") : t("light")}`}
-      className="inline-flex size-10 items-center justify-center rounded-full border border-border text-muted transition-colors hover:bg-surface hover:text-text"
+      aria-pressed={mounted ? !isDark : undefined}
+      aria-label={label}
+      title={label}
+      className="inline-flex size-10 cursor-pointer items-center justify-center rounded-full border border-border text-muted transition-colors hover:bg-surface hover:text-text"
     >
       {mounted && !isDark ? (
         <Moon className="size-4" aria-hidden />

@@ -19,17 +19,17 @@ export async function Process({ content }: { content: HomeContent }) {
         <ol className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {content.process.map((step, index) => (
             <li key={`${step.number}-${index}`} className="h-full">
-              <Reveal delay={index * 0.08} y={34} className="h-full">
-                <div className="gradient-border surface-card group relative flex h-full flex-col gap-3 overflow-hidden p-6 transition-all duration-300 hover:-translate-y-1 hover:border-primary/40">
-                  <span
-                    aria-hidden
-                    className="absolute -end-6 -top-6 text-6xl font-bold tabular-nums text-primary/10 transition-transform duration-500 group-hover:scale-110"
-                  >
-                    {step.number}
-                  </span>
-                  <span className="text-sm font-semibold tabular-nums text-primary" dir="ltr">
-                    {step.number}
-                  </span>
+              <Reveal delay={index * 0.06} y={24} className="h-full">
+                <div className="gradient-border surface-card group relative flex h-full flex-col gap-4 overflow-hidden p-5 transition-colors duration-200 hover:border-primary/40 hover:bg-surface-2 sm:p-6">
+                  <div className="flex items-center justify-between gap-3 border-b border-border/70 pb-3">
+                    <span className="text-sm font-semibold tabular-nums text-primary" dir="ltr">
+                      {step.number}
+                    </span>
+                    <span
+                      aria-hidden
+                      className="h-px flex-1 bg-gradient-to-r from-primary/35 via-border to-transparent rtl:bg-gradient-to-l"
+                    />
+                  </div>
                   <h3 className="text-lg font-semibold">
                     <bdi>{pickLocale(step.title, locale)}</bdi>
                   </h3>

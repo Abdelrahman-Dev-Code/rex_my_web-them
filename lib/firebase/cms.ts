@@ -88,14 +88,22 @@ export async function fetchSiteSettingsFromDb(): Promise<SiteSettingsDoc | null>
     const snap = await getDoc(doc(db, "siteSettings", "main"));
     if (!snap.exists()) return null;
     const data = snap.data();
+    const rawWhatsapp = typeof data.whatsapp === "string" ? data.whatsapp.trim() : "";
+    const whatsapp =
+      !rawWhatsapp || rawWhatsapp === "10000000000" ? defaultSite.whatsapp : rawWhatsapp;
+    const rawLocation = data.location as Localized | undefined;
+    const location =
+      !rawLocation || rawLocation.ar === "الرياض، السعودية"
+        ? defaultSite.location
+        : rawLocation;
     return {
       name: data.name,
       legalName: data.legalName,
       tagline: data.tagline,
       shortTagline: data.shortTagline,
       email: data.email,
-      whatsapp: data.whatsapp,
-      location: data.location,
+      whatsapp,
+      location,
       socials: Array.isArray(data.socials) ? data.socials : defaultSite.socials,
       aboutMission: data.aboutMission ?? aboutMission,
       aboutSecondary: data.aboutSecondary ?? aboutSecondary,
@@ -496,5 +504,23 @@ export async function seedDefaultContentToFirestore(): Promise<{ count: number }
     return { count };
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, "seed");
+  }
+}
+
+export async function ensureAdminRecord(uid: string, email: string | null | undefined): Promise<void> {
+  if (!uid || !email) return;
+  const path = `admins/${uid}`;
+  try {
+    const ref = doc(db, "admins", uid);
+    const snap = await getDoc(ref);
+    if (!snap.exists()) {
+      await setDoc(ref, {
+        email: email.trim().toLowerCase().slice(0, 160),
+        role: "admin",
+        createdAt: serverTimestamp(),
+      });
+    }
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
   }
 }

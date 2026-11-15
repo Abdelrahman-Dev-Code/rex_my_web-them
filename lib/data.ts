@@ -74,16 +74,26 @@ export const getSite = unstable_cache(
         process: processContent,
       };
     }
+    const whatsapp =
+      !remote.whatsapp || remote.whatsapp === "10000000000"
+        ? siteContent.whatsapp
+        : remote.whatsapp;
+    const location =
+      !remote.location || remote.location.ar === "الرياض، السعودية"
+        ? siteContent.location
+        : remote.location;
     return {
       ...siteContent,
       ...remote,
+      whatsapp,
+      location,
       aboutMission: remote.aboutMission ?? aboutMission,
       aboutSecondary: remote.aboutSecondary ?? aboutSecondary,
       stats: remote.stats ?? stats,
       process: remote.process ?? processContent,
     };
   },
-  ["cms-site"],
+  ["cms-site-v2"],
   { revalidate: 3600, tags: ["site"] },
 );
 

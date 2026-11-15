@@ -4,7 +4,6 @@ import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { PageHero } from "@/components/layout/page-hero";
 import { Services } from "@/components/sections/services";
-import { ProjectEstimator } from "@/components/sections/project-estimator";
 import { Process } from "@/components/sections/process";
 import { Faq } from "@/components/sections/faq";
 import { Cta } from "@/components/sections/cta";
@@ -87,7 +86,6 @@ export default async function ServicesPage({
       />
       <PageHero eyebrow={t("eyebrow")} title={t("title")} subtitle={t("subtitle")} />
       <Services content={content} />
-      <ProjectEstimator locale={locale} />
       <Process content={content} />
       <Faq content={content} />
       <Cta content={content} />

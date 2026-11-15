@@ -50,6 +50,10 @@ export default async function ContactPage({
   const l = locale === "en" ? "en" : "ar";
   const initialBrief = typeof brief === "string" ? brief.slice(0, 2000) : "";
 
+  const formattedWhatsapp = /^967\d{9}$/.test(site.whatsapp)
+    ? `+967 ${site.whatsapp.slice(3, 6)} ${site.whatsapp.slice(6, 9)} ${site.whatsapp.slice(9, 12)}`
+    : `+${site.whatsapp}`;
+
   const cards = [
     {
       icon: Mail,
@@ -64,7 +68,7 @@ export default async function ContactPage({
       icon: MessageCircle,
       title: t("whatsappTitle"),
       body: t("whatsappBody"),
-      value: `+${site.whatsapp}`,
+      value: formattedWhatsapp,
       href: `https://wa.me/${site.whatsapp}`,
       ltr: true,
       copyable: false,

@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import robots from "@/app/robots";
+import { slugifyAscii } from "@/components/studio/studio-helpers";
 import { pickLocale, projects, services, site, team } from "@/content/site";
+import { isBootstrapAdminEmail } from "@/lib/firebase/client";
 import { alternatesFor, breadcrumbItems, pageMetadata, toLocale } from "@/lib/seo";
 
 describe("SEO & localization helpers", () => {
@@ -60,5 +62,19 @@ describe("SEO & localization helpers", () => {
     expect(
       team.every((m) => m.slug && m.name?.ar && m.name?.en && m.role.ar && m.role.en),
     ).toBe(true);
+  });
+
+  it("authorizes bootstrap admin emails case-insensitively and rejects others", () => {
+    expect(isBootstrapAdminEmail("abduarahman.naif.ali@gmail.com")).toBe(true);
+    expect(isBootstrapAdminEmail(" ABDUARAHMAN.NAIF.ALI@GMAIL.COM ")).toBe(true);
+    expect(isBootstrapAdminEmail("abdelrahmandevcode@gmail.com")).toBe(true);
+    expect(isBootstrapAdminEmail("someone@example.com")).toBe(false);
+    expect(isBootstrapAdminEmail(null)).toBe(false);
+  });
+
+  it("normalizes ASCII slugs cleanly", () => {
+    expect(slugifyAscii("  My New Project!  ")).toBe("my-new-project");
+    expect(slugifyAscii("___", "item")).toBe("___");
+    expect(slugifyAscii("مرحبا", "post")).toMatch(/^post-/);
   });
 });

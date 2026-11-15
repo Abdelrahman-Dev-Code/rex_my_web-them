@@ -49,7 +49,7 @@ export function LegalDocument({
 
           <div className="mt-10 flex flex-col gap-8">
             {page.sections.map((section, index) => (
-              <Reveal key={section.heading.en} delay={index * 0.05} y={20}>
+              <Reveal key={`${section.heading.en}-${index}`} delay={index * 0.05} y={20}>
                 <article className="border-t border-border pt-6">
                   <h2 className="mb-2 text-lg font-semibold">
                     <bdi>{pickLocale(section.heading, locale)}</bdi>
