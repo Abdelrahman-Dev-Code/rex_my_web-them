@@ -138,7 +138,7 @@ export function StudioDashboard() {
     setToast({ msg, error });
     window.setTimeout(() => {
       setToast((prev) => (prev?.msg === msg ? null : prev));
-    }, 4000);
+    }, error ? 8000 : 4000);
   }, []);
 
   const fetchAllCmsSnapshot = useCallback(async () => {

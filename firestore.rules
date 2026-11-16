@@ -30,7 +30,7 @@ service cloud.firestore {
 
     function isAdmin() {
       return isVerified() && (
-        request.auth.token.email in ['abduarahman.naif.ali@gmail.com', 'abdelrahmandevcode@gmail.com'] ||
+        request.auth.token.email.lower() in ['abduarahman.naif.ali@gmail.com', 'abdelrahmandevcode@gmail.com'] ||
         exists(/databases/$(database)/documents/admins/$(request.auth.uid))
       );
     }
@@ -51,7 +51,7 @@ service cloud.firestore {
         isLocalized(data.legalName, 160) &&
         isLocalized(data.tagline, 240) &&
         isLocalized(data.shortTagline, 80) &&
-        (!('logoUrl' in data) || (data.logoUrl is string && data.logoUrl.size() <= 80000)) &&
+        (!('logoUrl' in data) || (data.logoUrl is string && data.logoUrl.size() <= 120000)) &&
         data.email is string && data.email.size() >= 5 && data.email.size() <= 160 &&
         data.whatsapp is string && data.whatsapp.size() >= 6 && data.whatsapp.size() <= 32 &&
         isLocalized(data.location, 160) &&

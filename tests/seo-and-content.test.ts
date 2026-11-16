@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import robots from "@/app/robots";
-import { slugifyAscii } from "@/components/studio/studio-helpers";
+import { formatCmsError, slugifyAscii } from "@/components/studio/studio-helpers";
 import { navItems, pickLocale, projects, resolveMemberAvatar, services, site, team } from "@/content/site";
 import { isBootstrapAdminEmail } from "@/lib/firebase/client";
 import { matchesSearchQuery, normalizeSearchText } from "@/lib/search";
@@ -100,5 +100,12 @@ describe("SEO & localization helpers", () => {
       "https://cdn.example.com/p.jpg",
     );
     expect(resolveMemberAvatar("front-end", "")).toBe("/images/team/front-end.jpg");
+  });
+
+  it("formats Firestore permission and quota errors clearly", () => {
+    const permErr = new Error(JSON.stringify({ error: "Missing or insufficient permissions." }));
+    expect(formatCmsError("فشل الحفظ", permErr, true)).toContain("الصلاحية");
+    const quotaErr = new Error("Quota exceeded.");
+    expect(formatCmsError("Save failed", quotaErr, false)).toContain("quota");
   });
 });

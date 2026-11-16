@@ -40,6 +40,7 @@ import { buttonClass } from "@/components/ui/button";
 import {
   ConfirmDeleteButton,
   fieldInputClass,
+  formatCmsError,
   hasLocalizedText,
   LocalizedFieldPair,
   slugifyAscii,
@@ -117,7 +118,7 @@ export function SiteSettingsEditor({
       ((logoTrimmed.startsWith("data:image/") ||
         logoTrimmed.startsWith("/") ||
         logoTrimmed.startsWith("https://")) &&
-        logoTrimmed.length <= 80000);
+        logoTrimmed.length <= 120000);
     const validEmail =
       emailTrimmed.length >= 5 &&
       emailTrimmed.length <= 160 &&
@@ -178,8 +179,8 @@ export function SiteSettingsEditor({
       await triggerRevalidation(user, ["site"]);
       await onSaved();
       notify(ar ? "تم حفظ إعدادات الموقع والشعار" : "Site settings & logo saved");
-    } catch {
-      notify(ar ? "فشل حفظ الإعدادات" : "Failed to save settings", true);
+    } catch (error) {
+      notify(formatCmsError(ar ? "فشل حفظ الإعدادات" : "Failed to save settings", error, ar), true);
     } finally {
       setSaving(false);
     }
@@ -1386,8 +1387,8 @@ export function TeamEditor({
       setEditing(null);
       setOriginalSlug(null);
       notify(ar ? "تم حفظ العضو" : "Member saved");
-    } catch {
-      notify(ar ? "تعذر حفظ العضو" : "Failed to save member", true);
+    } catch (error) {
+      notify(formatCmsError(ar ? "تعذر حفظ العضو" : "Failed to save member", error, ar), true);
     } finally {
       setSaving(false);
     }

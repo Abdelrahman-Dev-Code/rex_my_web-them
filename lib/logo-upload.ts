@@ -1,5 +1,5 @@
 const MAX_RAW_FILE_BYTES = 5 * 1024 * 1024;
-const MAX_STORED_DATA_URL_LEN = 65_000;
+const MAX_STORED_DATA_URL_LEN = 85_000;
 
 function utf8ToBase64(input: string): string {
   const bytes = new TextEncoder().encode(input);
@@ -101,6 +101,8 @@ export async function prepareLogoDataUrl(file: File): Promise<{
     { maxDim: 224, mime: "image/webp", q: 0.85 },
     { maxDim: 192, mime: "image/webp", q: 0.78 },
     { maxDim: 160, mime: "image/png", q: 0.9 },
+    { maxDim: 128, mime: "image/png", q: 0.9 },
+    { maxDim: 96, mime: "image/png", q: 0.85 },
   ];
 
   for (const attempt of attempts) {

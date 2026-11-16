@@ -122,7 +122,7 @@ function normalizeSiteSettingsData(data: Record<string, unknown>): SiteSettingsD
     ? aboutMission
     : rawAboutMission;
 
-  const rawLogoUrl = typeof data.logoUrl === "string" ? data.logoUrl.trim().slice(0, 80000) : "";
+  const rawLogoUrl = typeof data.logoUrl === "string" ? data.logoUrl.trim().slice(0, 120000) : "";
 
   return {
     name,
@@ -211,39 +211,79 @@ export async function fetchDocByIdFromDb<T>(
   }
 }
 
+function cleanLocalized(val: Localized | undefined, maxLen: number): Localized | null {
+  const ar = typeof val?.ar === "string" ? val.ar.trim().slice(0, maxLen) : "";
+  const en = typeof val?.en === "string" ? val.en.trim().slice(0, maxLen) : "";
+  if (!ar || !en) return null;
+  return { ar, en };
+}
+
 export async function saveSiteSettings(payload: SiteSettingsDoc): Promise<void> {
   const path = "siteSettings/main";
   try {
     const logoTrimmed =
-      typeof payload.logoUrl === "string" ? payload.logoUrl.trim().slice(0, 80000) : "";
+      typeof payload.logoUrl === "string" ? payload.logoUrl.trim().slice(0, 120000) : "";
+    const name = cleanLocalized(payload.name, 120) ?? defaultSite.name;
+    const legalName = cleanLocalized(payload.legalName, 160) ?? defaultSite.legalName;
+    const tagline = cleanLocalized(payload.tagline, 240) ?? defaultSite.tagline;
+    const shortTagline = cleanLocalized(payload.shortTagline, 80) ?? defaultSite.shortTagline;
+    const location = cleanLocalized(payload.location, 160) ?? defaultSite.location;
+
     const data: Record<string, unknown> = {
-      name: payload.name,
-      legalName: payload.legalName,
-      tagline: payload.tagline,
-      shortTagline: payload.shortTagline,
-      email: payload.email.trim(),
-      whatsapp: payload.whatsapp.trim(),
-      location: payload.location,
-      socials: payload.socials.slice(0, 10),
+      name,
+      legalName,
+      tagline,
+      shortTagline,
+      email: payload.email.trim().slice(0, 160),
+      whatsapp: payload.whatsapp.trim().slice(0, 32),
+      location,
+      socials: payload.socials
+        .slice(0, 10)
+        .map((s) => ({
+          label: String(s.label ?? "").trim().slice(0, 80),
+          href: String(s.href ?? "").trim().slice(0, 400),
+        }))
+        .filter((s) => s.label && s.href),
       updatedAt: serverTimestamp(),
     };
+
     if (logoTrimmed) data.logoUrl = logoTrimmed;
-    if (payload.aboutMission) data.aboutMission = payload.aboutMission;
-    if (payload.aboutSecondary) data.aboutSecondary = payload.aboutSecondary;
+
+    const cleanMission = cleanLocalized(payload.aboutMission, 1000);
+    if (cleanMission) data.aboutMission = cleanMission;
+
+    const cleanSecondary = cleanLocalized(payload.aboutSecondary, 1000);
+    if (cleanSecondary) data.aboutSecondary = cleanSecondary;
+
     if (Array.isArray(payload.stats)) {
-      data.stats = payload.stats.slice(0, 8).map((item) => ({
-        value: item.value.trim(),
-        suffix: item.suffix?.trim() ?? "",
-        label: item.label,
-      }));
+      data.stats = payload.stats
+        .slice(0, 8)
+        .map((item) => {
+          const label = cleanLocalized(item.label, 120);
+          const value = String(item.value ?? "").trim().slice(0, 20);
+          if (!label || !value) return null;
+          return {
+            value,
+            suffix: String(item.suffix ?? "").trim().slice(0, 12),
+            label,
+          };
+        })
+        .filter((item): item is NonNullable<typeof item> => item !== null);
     }
+
     if (Array.isArray(payload.process)) {
-      data.process = payload.process.slice(0, 8).map((item) => ({
-        number: item.number.trim(),
-        title: item.title,
-        description: item.description,
-      }));
+      data.process = payload.process
+        .slice(0, 8)
+        .map((item) => {
+          const number = String(item.number ?? "").trim().slice(0, 10);
+          const title = cleanLocalized(item.title, 120);
+          const description = cleanLocalized(item.description, 500);
+          if (!number || !title || !description) return null;
+          return { number, title, description };
+        })
+        .filter((item): item is NonNullable<typeof item> => item !== null);
     }
+
     await setDoc(doc(db, "siteSettings", "main"), data);
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);

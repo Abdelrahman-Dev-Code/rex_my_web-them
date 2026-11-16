@@ -55,6 +55,38 @@ export function hasLocalizedText(value: Localized): boolean {
   return value.ar.trim().length > 0 && value.en.trim().length > 0;
 }
 
+export function formatCmsError(baseMessage: string, error: unknown, ar: boolean): string {
+  const raw = error instanceof Error ? error.message : String(error ?? "");
+  let detail = raw;
+  try {
+    const parsed = JSON.parse(raw) as { error?: string; authInfo?: { email?: string | null; emailVerified?: boolean | null } };
+    if (parsed?.error) detail = parsed.error;
+  } catch {
+    // Plain error message
+  }
+
+  const lower = detail.toLowerCase();
+  if (lower.includes("insufficient permissions") || lower.includes("permission-denied")) {
+    return ar
+      ? `${baseMessage}: تم رفض الصلاحية من Firestore. تأكد من تسجيل الدخول بحساب الإدارة المصرّح به.`
+      : `${baseMessage}: Firestore permission denied. Ensure you are signed in with an authorized admin account.`;
+  }
+  if (lower.includes("quota exceeded") || lower.includes("resource-exhausted")) {
+    return ar
+      ? `${baseMessage}: تم تجاوز حصة الكتابة اليومية المجانية لقاعدة البيانات، وسيتم تصفيرها غداً.`
+      : `${baseMessage}: Daily Firestore write quota exceeded; quota resets tomorrow.`;
+  }
+  if (lower.includes("offline") || lower.includes("unavailable") || lower.includes("network")) {
+    return ar
+      ? `${baseMessage}: تعذر الاتصال بقاعدة البيانات حالياً، تحقق من اتصال الإنترنت.`
+      : `${baseMessage}: Database connection unavailable; please check your network.`;
+  }
+  if (detail && detail.length < 180) {
+    return `${baseMessage} (${detail})`;
+  }
+  return baseMessage;
+}
+
 export function ConfirmDeleteButton({
   onConfirm,
   locale,
