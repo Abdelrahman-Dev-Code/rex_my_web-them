@@ -77,6 +77,11 @@ export async function generateMetadata({
       email: false,
       address: false,
     },
+    verification: {
+      google:
+        process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION?.trim() ||
+        "-tERhovbOcCDTgeqoRqDGv_sPtBTg5rz1nW6rUz4r9Y",
+    },
   };
 }
 
