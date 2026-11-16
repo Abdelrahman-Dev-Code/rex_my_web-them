@@ -130,11 +130,12 @@ service cloud.firestore {
 
     function isValidMember(data) {
       return data.keys().hasAll(['slug', 'order', 'initials', 'role', 'focus', 'responsibilities', 'stack', 'placeholder', 'updatedAt']) &&
-        data.keys().hasOnly(['slug', 'order', 'initials', 'name', 'role', 'focus', 'responsibilities', 'stack', 'placeholder', 'updatedAt']) &&
+        data.keys().hasOnly(['slug', 'order', 'initials', 'name', 'avatar', 'role', 'focus', 'responsibilities', 'stack', 'placeholder', 'updatedAt']) &&
         isValidId(data.slug) &&
         data.order is number && data.order >= 0 && data.order <= 999 &&
         data.initials is string && data.initials.size() >= 1 && data.initials.size() <= 6 &&
         (!('name' in data) || isLocalized(data.name, 120)) &&
+        (!('avatar' in data) || (data.avatar is string && data.avatar.size() <= 400)) &&
         isLocalized(data.role, 120) &&
         isLocalized(data.focus, 300) &&
         data.responsibilities is list && data.responsibilities.size() <= 15 &&

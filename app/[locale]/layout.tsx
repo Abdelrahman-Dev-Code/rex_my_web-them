@@ -27,7 +27,11 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { locale } = await params;
   const l = hasLocale(routing.locales, locale) ? locale : routing.defaultLocale;
-  const t = await getTranslations({ locale: l, namespace: "meta" });
+  const [t, site] = await Promise.all([
+    getTranslations({ locale: l, namespace: "meta" }),
+    getSite(),
+  ]);
+  const brandName = site.name[l === "en" ? "en" : "ar"];
 
   return {
     metadataBase: new URL(siteUrl),
@@ -36,7 +40,43 @@ export async function generateMetadata({
       path: "",
       title: t("title"),
       description: t("description"),
+      siteName: brandName,
     }),
+    title: {
+      default: t("title"),
+      template: `%s | ${brandName}`,
+    },
+    applicationName: brandName,
+    authors: [{ name: brandName, url: siteUrl }],
+    creator: brandName,
+    publisher: site.legalName[l === "en" ? "en" : "ar"],
+    category: "technology",
+    keywords:
+      l === "ar"
+        ? [
+            "نكست سوفت",
+            "Next Soft",
+            "تطوير مواقع",
+            "تطبيقات ويب",
+            "شركة برمجة",
+            "تصميم واجهات RTL",
+            "Next.js",
+            "اليمن",
+          ]
+        : [
+            "Next Soft",
+            "web development",
+            "Next.js engineering",
+            "Arabic RTL UI UX",
+            "digital products",
+            "software studio",
+            "Yemen",
+          ],
+    formatDetection: {
+      telephone: false,
+      email: false,
+      address: false,
+    },
   };
 }
 
@@ -79,21 +119,21 @@ export default async function LocaleLayout({
       label: pickLocale(service.title, l),
       hint: pickLocale(service.description, l),
       href: "/services",
-      keywords: `${pickLocale(service.title, l)} ${pickLocale(service.description, l)} services`,
+      keywords: `${pickLocale(service.title, l)} ${pickLocale(service.description, l)} services خدمات`,
     })),
     ...projects.map((project) => ({
       id: `project-${project.slug}`,
       label: pickLocale(project.title, l),
       hint: pickLocale(project.category, l),
       href: `/work/${project.slug}`,
-      keywords: `${pickLocale(project.title, l)} ${pickLocale(project.category, l)} work`,
+      keywords: `${pickLocale(project.title, l)} ${pickLocale(project.category, l)} ${project.stack.join(" ")} work مشاريع أعمال`,
     })),
     ...posts.map((post) => ({
       id: `post-${post.slug}`,
       label: pickLocale(post.title, l),
       hint: pickLocale(post.tag, l),
       href: `/blog/${post.slug}`,
-      keywords: `${pickLocale(post.title, l)} ${pickLocale(post.tag, l)} blog`,
+      keywords: `${pickLocale(post.title, l)} ${pickLocale(post.tag, l)} blog مدونة مقالات`,
     })),
     ...team.map((member) => {
       const displayName = member.name ? pickLocale(member.name, l) : pickLocale(member.role, l);
@@ -103,7 +143,7 @@ export default async function LocaleLayout({
         label: displayName,
         hint: `${displayRole}${pickLocale(member.focus, l)}`,
         href: `/team/${member.slug}`,
-        keywords: `${displayName} ${pickLocale(member.role, l)} ${pickLocale(member.focus, l)} ${member.stack.join(" ")} team`,
+        keywords: `${displayName} ${pickLocale(member.role, l)} ${pickLocale(member.focus, l)} ${member.stack.join(" ")} team فريق`,
       };
     }),
     {
@@ -159,32 +199,47 @@ export default async function LocaleLayout({
                   "@context": "https://schema.org",
                   "@graph": [
                     {
-                      "@type": "Organization",
+                      "@type": ["Organization", "ProfessionalService"],
+                      "@id": `${siteUrl}/#organization`,
                       name: site.name.en,
                       alternateName: site.name.ar,
+                      legalName: site.legalName.en,
                       url: siteUrl,
+                      logo: `${siteUrl}/icon.svg`,
+                      image: `${siteUrl}/og-cover.jpg`,
                       email: site.email,
-                      description: site.tagline.en,
+                      telephone: `+${site.whatsapp}`,
+                      description: site.tagline[l],
+                      address: {
+                        "@type": "PostalAddress",
+                        addressCountry: "YE",
+                      },
+                      areaServed: ["YE", "SA", "AE", "Worldwide"],
+                      serviceType: services.map((service) => pickLocale(service.title, l)),
                       sameAs: site.socials.map((social) => social.href),
                       contactPoint: [
                         {
                           "@type": "ContactPoint",
                           email: site.email,
-                          contactType: "sales",
-                          availableLanguage: ["ar", "en"],
+                          telephone: `+${site.whatsapp}`,
+                          contactType: "customer service",
+                          availableLanguage: ["Arabic", "English"],
                         },
                       ],
                     },
                     {
                       "@type": "WebSite",
+                      "@id": `${siteUrl}/#website`,
                       name: site.name.en,
+                      alternateName: site.name.ar,
                       url: siteUrl,
                       inLanguage: ["ar", "en"],
+                      publisher: { "@id": `${siteUrl}/#organization` },
                       potentialAction: {
                         "@type": "SearchAction",
                         target: {
                           "@type": "EntryPoint",
-                          urlTemplate: `${siteUrl}/{locale}/search?q={search_term_string}`,
+                          urlTemplate: `${siteUrl}/${l}/search?q={search_term_string}`,
                         },
                         "query-input": "required name=search_term_string",
                       },

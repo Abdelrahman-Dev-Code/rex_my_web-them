@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { Menu, X } from "lucide-react";
 import { Link, usePathname } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
+import { BrandMark } from "./brand-mark";
 import { LocaleSwitcher } from "./locale-switcher";
 import { ThemeToggle } from "./theme-toggle";
 import { CommandPalette, type PaletteItem } from "./command-palette";
@@ -120,17 +121,9 @@ export function Header({ nav, siteName, paletteItems }: HeaderProps) {
           href="/"
           onClick={() => setOpen(false)}
           className="flex shrink-0 items-center gap-2.5 whitespace-nowrap"
-          aria-label={t("nav.home")}
+          aria-label={siteName}
         >
-          <span
-            aria-hidden
-            className={cn(
-              "grid place-items-center bg-primary font-bold tracking-tight text-primary-fg transition-all duration-300",
-              scrolled ? "size-8 rounded-lg text-xs" : "size-9 rounded-xl text-sm",
-            )}
-          >
-            CN
-          </span>
+          <BrandMark size={scrolled ? "sm" : "md"} />
           <span className="text-base font-semibold tracking-tight whitespace-nowrap md:text-lg">
             {siteName}
           </span>

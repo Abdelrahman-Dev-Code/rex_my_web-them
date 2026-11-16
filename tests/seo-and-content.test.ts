@@ -3,6 +3,7 @@ import robots from "@/app/robots";
 import { slugifyAscii } from "@/components/studio/studio-helpers";
 import { pickLocale, projects, services, site, team } from "@/content/site";
 import { isBootstrapAdminEmail } from "@/lib/firebase/client";
+import { matchesSearchQuery, normalizeSearchText } from "@/lib/search";
 import { alternatesFor, breadcrumbItems, pageMetadata, toLocale } from "@/lib/seo";
 
 describe("SEO & localization helpers", () => {
@@ -26,7 +27,7 @@ describe("SEO & localization helpers", () => {
       title: "الخدمات",
       description: "وصف الخدمات",
     });
-    expect(arMeta.openGraph?.locale).toBe("ar_SA");
+    expect(arMeta.openGraph?.locale).toBe("ar_YE");
     expect(arMeta.openGraph?.images).toBeDefined();
     expect(arMeta.twitter?.images).toEqual(["/og-cover.jpg"]);
 
@@ -54,14 +55,21 @@ describe("SEO & localization helpers", () => {
     expect(items[1].item).toBe("/en/work");
   });
 
-  it("keeps fallback bilingual data complete for both locales", () => {
-    expect(pickLocale(site.name, "ar")).toBeTruthy();
-    expect(pickLocale(site.name, "en")).toBeTruthy();
+  it("keeps Next Soft bilingual fallback data complete for both locales", () => {
+    expect(pickLocale(site.name, "ar")).toBe("نكست سوفت");
+    expect(pickLocale(site.name, "en")).toBe("Next Soft");
     expect(services.length).toBeGreaterThanOrEqual(4);
     expect(projects.every((p) => p.slug && p.title.ar && p.title.en)).toBe(true);
     expect(
       team.every((m) => m.slug && m.name?.ar && m.name?.en && m.role.ar && m.role.en),
     ).toBe(true);
+  });
+
+  it("normalizes Arabic alef, diacritics, and multi-token search queries", () => {
+    expect(normalizeSearchText("أَعْمَالُنَا المميّزة")).toBe("اعمالنا المميزه");
+    expect(matchesSearchQuery("تطوير تطبيقات الويب بـ Next.js", "تطوير ويب")).toBe(true);
+    expect(matchesSearchQuery("إدارة المحتوى الرقمي", "اداره محتوي")).toBe(true);
+    expect(matchesSearchQuery("تطوير تطبيقات الويب", "تطبيق جوال")).toBe(false);
   });
 
   it("authorizes bootstrap admin emails case-insensitively and rejects others", () => {

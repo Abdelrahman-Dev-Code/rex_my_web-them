@@ -27,31 +27,50 @@ export function pageMetadata({
   title,
   description,
   type = "website",
+  siteName,
+  image,
 }: {
   locale: string;
   path: string;
   title: string;
   description: string;
   type?: "website" | "article";
+  siteName?: string;
+  image?: string;
 }): Metadata {
   const l = toLocale(locale);
+  const resolvedSiteName = siteName ?? (l === "ar" ? "نكست سوفت" : "Next Soft");
+  const resolvedImage = image ?? "/og-cover.jpg";
 
   return {
     title,
     description,
     alternates: alternatesFor(locale, path),
+    robots: {
+      index: true,
+      follow: true,
+      googleBot: {
+        index: true,
+        follow: true,
+        "max-video-preview": -1,
+        "max-image-preview": "large",
+        "max-snippet": -1,
+      },
+    },
     openGraph: {
       type,
       title,
       description,
-      locale: l === "ar" ? "ar_SA" : "en_US",
+      siteName: resolvedSiteName,
+      locale: l === "ar" ? "ar_YE" : "en_US",
+      alternateLocale: l === "ar" ? ["en_US"] : ["ar_YE"],
       url: `/${l}${path}`,
       images: [
         {
-          url: "/og-cover.jpg",
+          url: resolvedImage,
           width: 1200,
-          height: 675,
-          alt: title,
+          height: image ? 1200 : 675,
+          alt: `${title} — ${resolvedSiteName}`,
         },
       ],
     },
@@ -59,7 +78,7 @@ export function pageMetadata({
       card: "summary_large_image",
       title,
       description,
-      images: ["/og-cover.jpg"],
+      images: [resolvedImage],
     },
   };
 }

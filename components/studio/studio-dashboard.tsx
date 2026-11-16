@@ -48,6 +48,7 @@ import {
   fetchSiteSettingsFromDb,
   mapContactDoc,
   seedDefaultContentToFirestore,
+  syncLegacySiteSettingsInFirestore,
   updateContactSubmission,
   type ContactStatus,
   type ContactSubmission,
@@ -271,6 +272,28 @@ export function StudioDashboard() {
         return;
       }
 
+      if (!cancelled && snapshot.remoteSite && bootstrappedRef.current !== user.uid) {
+        bootstrappedRef.current = user.uid;
+        try {
+          const synced = await syncLegacySiteSettingsInFirestore();
+          if (synced) {
+            await triggerRevalidation(user, ["site"]);
+            const refreshed = await fetchAllCmsSnapshot();
+            if (!cancelled) {
+              applyCmsSnapshot(refreshed);
+              notify(
+                ar
+                  ? "تم تثبيت وتحديث إعدادات Next Soft في Firestore تلقائياً"
+                  : "Next Soft settings synced to Firestore automatically",
+              );
+            }
+            return;
+          }
+        } catch {
+          // Non-fatal; user can still save manually in Settings tab
+        }
+      }
+
       applyCmsSnapshot(snapshot);
     };
 
@@ -294,7 +317,7 @@ export function StudioDashboard() {
       cancelled = true;
       unsubscribe();
     };
-  }, [authReady, user, isAdmin, fetchAllCmsSnapshot, applyCmsSnapshot, notify, t]);
+  }, [authReady, user, isAdmin, ar, fetchAllCmsSnapshot, applyCmsSnapshot, notify, t]);
 
   const filteredSubmissions = useMemo(() => {
     const q = inboxSearch.trim().toLowerCase();
@@ -588,6 +611,16 @@ export function StudioDashboard() {
                       <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted" dir="ltr">
                         <span>Project: {firebaseConfig.projectId}</span>
                         <span>Database: {firebaseConfig.firestoreDatabaseId}</span>
+                      </div>
+                      <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 rounded-xl border border-border/70 bg-bg-elevated px-3 py-2 text-xs text-muted">
+                        <span>
+                          {ar ? "الهوية النشطة:" : "Active brand:"}{" "}
+                          <strong className="text-text">
+                            {ar ? siteSettings.name.ar : siteSettings.name.en}
+                          </strong>
+                        </span>
+                        <span dir="ltr">{siteSettings.email}</span>
+                        <span dir="ltr">+{siteSettings.whatsapp}</span>
                       </div>
                     </div>
                   </div>

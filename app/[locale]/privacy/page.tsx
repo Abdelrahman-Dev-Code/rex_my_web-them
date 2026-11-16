@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { LegalDocument } from "@/components/sections/legal-document";
 import { getLegal } from "@/lib/data";
-import { alternatesFor } from "@/lib/seo";
+import { pageMetadata } from "@/lib/seo";
 import { routing } from "@/i18n/routing";
 
 export async function generateMetadata({
@@ -16,11 +16,12 @@ export async function generateMetadata({
   const l = hasLocale(routing.locales, locale) ? locale : routing.defaultLocale;
   const t = await getTranslations({ locale: l, namespace: "legal" });
 
-  return {
+  return pageMetadata({
+    locale: l,
+    path: "/privacy",
     title: t("privacy"),
     description: t("privacySubtitle"),
-    alternates: alternatesFor(l, "/privacy"),
-  };
+  });
 }
 
 export default async function PrivacyPage({

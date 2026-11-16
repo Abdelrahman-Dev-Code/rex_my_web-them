@@ -8,7 +8,7 @@ import { Breadcrumbs } from "@/components/layout/breadcrumbs";
 import { Reveal } from "@/components/motion/reveal";
 import { Link } from "@/i18n/navigation";
 import { pickLocale } from "@/content/site";
-import { alternatesFor, breadcrumbItems } from "@/lib/seo";
+import { breadcrumbItems, pageMetadata } from "@/lib/seo";
 import { getHomeContent, getPost, getSite } from "@/lib/data";
 import { routing } from "@/i18n/routing";
 
@@ -35,18 +35,26 @@ export async function generateMetadata({
   const post = await getPost(slug);
 
   if (!post) {
-    return { title: l === "ar" ? "المقال غير موجود" : "Post not found" };
+    return {
+      title: l === "ar" ? "المقال غير موجود" : "Post not found",
+      robots: { index: false, follow: false },
+    };
   }
 
-  return {
+  const base = pageMetadata({
+    locale: l,
+    path: `/blog/${slug}`,
     title: pickLocale(post.title, l),
     description: pickLocale(post.excerpt, l),
-    alternates: alternatesFor(l, `/blog/${slug}`),
+    type: "article",
+  });
+
+  return {
+    ...base,
     openGraph: {
+      ...base.openGraph,
       type: "article",
       publishedTime: post.date,
-      title: pickLocale(post.title, l),
-      description: pickLocale(post.excerpt, l),
     },
   };
 }

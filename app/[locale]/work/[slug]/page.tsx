@@ -8,7 +8,7 @@ import { Breadcrumbs } from "@/components/layout/breadcrumbs";
 import { Reveal } from "@/components/motion/reveal";
 import { Link } from "@/i18n/navigation";
 import { pickLocale } from "@/content/site";
-import { alternatesFor, breadcrumbJsonLd } from "@/lib/seo";
+import { breadcrumbJsonLd, pageMetadata } from "@/lib/seo";
 import { getHomeContent, getProject } from "@/lib/data";
 import { routing } from "@/i18n/routing";
 
@@ -35,14 +35,19 @@ export async function generateMetadata({
   const project = await getProject(slug);
 
   if (!project) {
-    return { title: l === "ar" ? "المشروع غير موجود" : "Project not found" };
+    return {
+      title: l === "ar" ? "المشروع غير موجود" : "Project not found",
+      robots: { index: false, follow: false },
+    };
   }
 
-  return {
+  return pageMetadata({
+    locale: l,
+    path: `/work/${slug}`,
     title: pickLocale(project.title, l),
     description: pickLocale(project.summary, l),
-    alternates: alternatesFor(l, `/work/${slug}`),
-  };
+    type: "article",
+  });
 }
 
 export default async function ProjectPage({

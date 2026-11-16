@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { useTranslations } from "next-intl";
 import { CornerDownLeft, Search } from "lucide-react";
 import { useRouter } from "@/i18n/navigation";
+import { matchesSearchQuery } from "@/lib/search";
 
 export type PaletteItem = {
   id: string;
@@ -27,13 +28,13 @@ export function CommandPalette({ items }: CommandPaletteProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
 
-  const normalizedQuery = query.trim().toLowerCase();
+  const normalizedQuery = query.trim();
 
   const filtered = useMemo(() => {
     if (!open) return [];
     if (!normalizedQuery) return items;
     return items.filter((item) =>
-      `${item.label} ${item.hint ?? ""} ${item.keywords}`.toLowerCase().includes(normalizedQuery),
+      matchesSearchQuery(`${item.label} ${item.hint ?? ""} ${item.keywords}`, normalizedQuery),
     );
   }, [items, normalizedQuery, open]);
 

@@ -1,6 +1,7 @@
 import { Link } from "@/i18n/navigation";
 import { getTranslations } from "next-intl/server";
 import { ArrowUpRight, Mail } from "lucide-react";
+import { BrandMark } from "./brand-mark";
 import type { SiteMeta } from "@/lib/data";
 
 type FooterProps = {
@@ -22,12 +23,7 @@ export async function Footer({ nav, locale, site }: FooterProps) {
       <div className="container-page grid gap-10 py-14 sm:grid-cols-2 lg:grid-cols-[1.45fr_1fr_1fr_1.15fr] lg:py-16">
         <div className="flex flex-col gap-4">
           <Link href="/" className="flex w-fit items-center gap-2.5">
-            <span
-              aria-hidden
-              className="grid size-9 place-items-center rounded-xl bg-primary text-sm font-bold text-primary-fg"
-            >
-              CN
-            </span>
+            <BrandMark size="md" />
             <span className="text-base font-semibold tracking-tight">{name}</span>
           </Link>
           <p className="max-w-xs text-sm leading-relaxed text-muted">

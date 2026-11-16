@@ -83,35 +83,97 @@ function formatTimestamp(value: unknown): string {
   return new Date().toISOString();
 }
 
+function isLegacyName(val: Localized | undefined): boolean {
+  return !val || val.en === "CodeNest" || val.en === "NextSoft" || val.ar === "كود نست" || val.ar === "نيكست سوفت";
+}
+
+function isLegacyLegalName(val: Localized | undefined): boolean {
+  return (
+    !val ||
+    val.en === "CodeNest Technology" ||
+    val.en === "NextSoft Technology" ||
+    val.ar === "كود نست للتقنية" ||
+    val.ar === "نيكست سوفت للتقنية"
+  );
+}
+
+function isLegacyAboutMission(val: Localized | undefined): boolean {
+  return !val || val.en.startsWith("CodeNest ") || val.ar.startsWith("كود نست ");
+}
+
+function normalizeSiteSettingsData(data: Record<string, unknown>): SiteSettingsDoc {
+  const rawWhatsapp = typeof data.whatsapp === "string" ? data.whatsapp.trim() : "";
+  const whatsapp =
+    !rawWhatsapp || rawWhatsapp === "10000000000" ? defaultSite.whatsapp : rawWhatsapp;
+  const rawLocation = data.location as Localized | undefined;
+  const location =
+    !rawLocation || rawLocation.ar === "الرياض، السعودية" ? defaultSite.location : rawLocation;
+  const rawName = data.name as Localized | undefined;
+  const name = isLegacyName(rawName) ? defaultSite.name : (rawName as Localized);
+  const rawLegalName = data.legalName as Localized | undefined;
+  const legalName = isLegacyLegalName(rawLegalName)
+    ? defaultSite.legalName
+    : (rawLegalName as Localized);
+  const rawEmail = typeof data.email === "string" ? data.email.trim() : "";
+  const email =
+    !rawEmail || rawEmail === "hello@codenest.example" ? defaultSite.email : rawEmail;
+  const rawAboutMission = data.aboutMission as Localized | undefined;
+  const resolvedAboutMission = isLegacyAboutMission(rawAboutMission)
+    ? aboutMission
+    : rawAboutMission;
+
+  return {
+    name,
+    legalName,
+    tagline: (data.tagline as Localized | undefined) ?? defaultSite.tagline,
+    shortTagline: (data.shortTagline as Localized | undefined) ?? defaultSite.shortTagline,
+    email,
+    whatsapp,
+    location,
+    socials: Array.isArray(data.socials) ? data.socials : defaultSite.socials,
+    aboutMission: resolvedAboutMission,
+    aboutSecondary: (data.aboutSecondary as Localized | undefined) ?? aboutSecondary,
+    stats: Array.isArray(data.stats) ? data.stats : defaultStats,
+    process: Array.isArray(data.process) ? data.process : defaultProcess,
+  };
+}
+
 export async function fetchSiteSettingsFromDb(): Promise<SiteSettingsDoc | null> {
   try {
     const snap = await getDoc(doc(db, "siteSettings", "main"));
     if (!snap.exists()) return null;
-    const data = snap.data();
-    const rawWhatsapp = typeof data.whatsapp === "string" ? data.whatsapp.trim() : "";
-    const whatsapp =
-      !rawWhatsapp || rawWhatsapp === "10000000000" ? defaultSite.whatsapp : rawWhatsapp;
-    const rawLocation = data.location as Localized | undefined;
-    const location =
-      !rawLocation || rawLocation.ar === "الرياض، السعودية"
-        ? defaultSite.location
-        : rawLocation;
-    return {
-      name: data.name,
-      legalName: data.legalName,
-      tagline: data.tagline,
-      shortTagline: data.shortTagline,
-      email: data.email,
-      whatsapp,
-      location,
-      socials: Array.isArray(data.socials) ? data.socials : defaultSite.socials,
-      aboutMission: data.aboutMission ?? aboutMission,
-      aboutSecondary: data.aboutSecondary ?? aboutSecondary,
-      stats: Array.isArray(data.stats) ? data.stats : defaultStats,
-      process: Array.isArray(data.process) ? data.process : defaultProcess,
-    };
+    return normalizeSiteSettingsData(snap.data() as Record<string, unknown>);
   } catch {
     return null;
+  }
+}
+
+export async function syncLegacySiteSettingsInFirestore(): Promise<boolean> {
+  const path = "siteSettings/main";
+  try {
+    const snap = await getDoc(doc(db, "siteSettings", "main"));
+    if (!snap.exists()) return false;
+    const data = snap.data() as Record<string, unknown>;
+    const rawWhatsapp = typeof data.whatsapp === "string" ? data.whatsapp.trim() : "";
+    const rawLocation = data.location as Localized | undefined;
+    const rawEmail = typeof data.email === "string" ? data.email.trim() : "";
+    const needsSync =
+      !rawWhatsapp ||
+      rawWhatsapp === "10000000000" ||
+      !rawLocation ||
+      rawLocation.ar === "الرياض، السعودية" ||
+      !rawEmail ||
+      rawEmail === "hello@codenest.example" ||
+      isLegacyName(data.name as Localized | undefined) ||
+      isLegacyLegalName(data.legalName as Localized | undefined) ||
+      isLegacyAboutMission(data.aboutMission as Localized | undefined);
+
+    if (!needsSync) return false;
+    const cleaned = normalizeSiteSettingsData(data);
+    await saveSiteSettings(cleaned);
+    return true;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, path);
   }
 }
 
@@ -256,6 +318,10 @@ export async function saveMember(payload: MemberDoc): Promise<void> {
     };
     if (payload.name?.ar?.trim() && payload.name?.en?.trim()) {
       data.name = { ar: payload.name.ar.trim(), en: payload.name.en.trim() };
+    }
+    const avatarTrimmed = typeof payload.avatar === "string" ? payload.avatar.trim().slice(0, 400) : "";
+    if (avatarTrimmed) {
+      data.avatar = avatarTrimmed;
     }
     await setDoc(doc(db, "team", payload.slug), data);
   } catch (error) {

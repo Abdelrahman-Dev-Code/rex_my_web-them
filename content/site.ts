@@ -31,14 +31,14 @@ export type SiteMeta = {
 };
 
 export const site: SiteMeta = {
-  name: { ar: "كود نست", en: "CodeNest" },
-  legalName: { ar: "كود نست للتقنية", en: "CodeNest Technology" },
+  name: { ar: "نكست سوفت", en: "Next Soft" },
+  legalName: { ar: "نكست سوفت للتقنية", en: "Next Soft Technology" },
   tagline: {
     ar: "نبني منتجات رقمية تستحق الثقة",
     en: "Digital products worth trusting",
   },
   shortTagline: { ar: "استوديو رقمي", en: "Digital studio" },
-  email: "hello@codenest.example",
+  email: "hello@nextsoft.dev",
   whatsapp: "967716713514",
   location: { ar: "اليمن", en: "Yemen" },
   socials: [
@@ -764,8 +764,8 @@ export const values: Value[] = [
 ];
 
 export const aboutMission: Localized = {
-  ar: "كود نست فريق هندسي عربي يبني منتجات رقمية تجمع بين الدقة التقنية والذوق التصميمي. نؤمن أن أفضل المنتجات تُولد من فهم عميق للمستخدم، ومن فريق يهتم بالتفاصيل الصغيرة كما يهتم بالصورة الكبيرة.",
-  en: "CodeNest is an Arabic-first engineering team building digital products that pair technical precision with design taste. We believe the best products come from a deep understanding of the user and a team that cares about small details as much as the big picture.",
+  ar: "نكست سوفت فريق هندسي عربي يبني منتجات رقمية تجمع بين الدقة التقنية والذوق التصميمي. نؤمن أن أفضل المنتجات تُولد من فهم عميق للمستخدم، ومن فريق يهتم بالتفاصيل الصغيرة كما يهتم بالصورة الكبيرة.",
+  en: "Next Soft is an Arabic-first engineering team building digital products that pair technical precision with design taste. We believe the best products come from a deep understanding of the user and a team that cares about small details as much as the big picture.",
 };
 
 export const aboutSecondary: Localized = {
@@ -942,6 +942,7 @@ export type Member = {
   slug: string;
   initials: string;
   name?: Localized;
+  avatar?: string;
   role: Localized;
   focus: Localized;
   responsibilities: Localized[];
@@ -949,11 +950,29 @@ export type Member = {
   placeholder: boolean;
 };
 
+export const TEAM_AVATAR_BY_SLUG: Record<string, string> = {
+  "front-end": "/images/team/front-end.jpg",
+  "product-design": "/images/team/product-design.jpg",
+  "back-end": "/images/team/back-end.jpg",
+  quality: "/images/team/quality.jpg",
+  "mobile-engineering": "/images/team/mobile-engineering.jpg",
+  "devops-cloud": "/images/team/devops-cloud.jpg",
+  "ai-automation": "/images/team/ai-automation.jpg",
+  architecture: "/images/team/architecture.jpg",
+};
+
+export function resolveMemberAvatar(slug: string, avatar?: string | null): string | undefined {
+  const cleaned = typeof avatar === "string" ? avatar.trim() : "";
+  if (cleaned.startsWith("/")) return cleaned;
+  return TEAM_AVATAR_BY_SLUG[slug];
+}
+
 export const team: Member[] = [
   {
     slug: "front-end",
     initials: "MA",
     name: { ar: "محمد العتيبي", en: "Mohammed Al-Otaibi" },
+    avatar: "/images/team/front-end.jpg",
     role: { ar: "مطور ويب — واجهات أمامية", en: "Full-Stack Web Developer" },
     focus: {
       ar: "Next.js وReact وأداء الواجهات وسرعة التفاعل.",
@@ -980,6 +999,7 @@ export const team: Member[] = [
     slug: "product-design",
     initials: "SD",
     name: { ar: "سارة الدوسري", en: "Sara Al-Dosari" },
+    avatar: "/images/team/product-design.jpg",
     role: { ar: "مصممة منتجات وواجهات UX/UI", en: "Product & UX/UI Designer" },
     focus: {
       ar: "أنظمة تصميم، تجربة استخدام عربية، ونماذج أولية قابلة للنقر.",
@@ -1006,6 +1026,7 @@ export const team: Member[] = [
     slug: "back-end",
     initials: "KH",
     name: { ar: "خالد الحربي", en: "Khaled Al-Harbi" },
+    avatar: "/images/team/back-end.jpg",
     role: { ar: "مهندس خدمات خلفية وقواعد بيانات", en: "Back-end & API Engineer" },
     focus: {
       ar: "واجهات API، قواعد بيانات، وسلامة البيانات والصلاحيات.",
@@ -1032,6 +1053,7 @@ export const team: Member[] = [
     slug: "quality",
     initials: "NQ",
     name: { ar: "نورة القحطاني", en: "Noura Al-Qahtani" },
+    avatar: "/images/team/quality.jpg",
     role: { ar: "مهندسة جودة ووصول رقمي QA", en: "QA & Accessibility Lead" },
     focus: {
       ar: "اختبارات آلية، معايير WCAG، ومراقبة الأداء بعد الإطلاق.",
@@ -1058,6 +1080,7 @@ export const team: Member[] = [
     slug: "mobile-engineering",
     initials: "OZ",
     name: { ar: "عمر الزهراني", en: "Omar Al-Zahrani" },
+    avatar: "/images/team/mobile-engineering.jpg",
     role: { ar: "مطور تطبيقات الجوال iOS/Android", en: "Mobile App Developer" },
     focus: {
       ar: "تطبيقات iOS وAndroid بسلاسة عالية وتكامل كامل مع الخادم والإشعارات.",
@@ -1084,6 +1107,7 @@ export const team: Member[] = [
     slug: "devops-cloud",
     initials: "RS",
     name: { ar: "ريم الشهري", en: "Reem Al-Shehri" },
+    avatar: "/images/team/devops-cloud.jpg",
     role: { ar: "مهندسة سحابة وتشغيل DevOps", en: "DevOps & Cloud Engineer" },
     focus: {
       ar: "أتمتة النشر، الحماية السحابية، ومراقبة الاستقرار والأداء على مدار الساعة.",
@@ -1110,6 +1134,7 @@ export const team: Member[] = [
     slug: "ai-automation",
     initials: "YM",
     name: { ar: "يوسف المطيري", en: "Youssef Al-Mutairi" },
+    avatar: "/images/team/ai-automation.jpg",
     role: { ar: "مهندس ذكاء اصطناعي وأتمتة", en: "AI & Automation Engineer" },
     focus: {
       ar: "دمج النماذج الذكية، البحث الدلالي، وأتمتة المهام التشغيلية داخل المنتجات.",
@@ -1136,6 +1161,7 @@ export const team: Member[] = [
     slug: "architecture",
     initials: "AG",
     name: { ar: "عبدالله الغامدي", en: "Abdullah Al-Ghamdi" },
+    avatar: "/images/team/architecture.jpg",
     role: { ar: "قائد تقني ومعماري أنظمة", en: "Tech Lead & Systems Architect" },
     focus: {
       ar: "تخطيط البنية القابلة للتوسع، اختيار التقنيات الأنسب، وضمان تسليم أسبوعي منضبط.",

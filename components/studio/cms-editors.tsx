@@ -3,14 +3,17 @@
 import { useState } from "react";
 import type { User } from "firebase/auth";
 import { Plus, Save, Trash2 } from "lucide-react";
-import type {
-  LegalPage,
-  Post,
-  Project,
-  Sector,
-  Service,
-  Tech,
+import {
+  TEAM_AVATAR_BY_SLUG,
+  resolveMemberAvatar,
+  type LegalPage,
+  type Post,
+  type Project,
+  type Sector,
+  type Service,
+  type Tech,
 } from "@/content/site";
+import { TeamPortrait } from "@/components/ui/team-portrait";
 import {
   deleteCmsDocument,
   saveFaq,
@@ -1140,8 +1143,9 @@ export function TeamEditor({
     setEditing({
       slug: `member-${Date.now().toString(36)}`,
       order: items.length + 1,
-      initials: "CN",
+      initials: "NS",
       name: { ar: "", en: "" },
+      avatar: "/images/team/front-end.jpg",
       role: { ar: "", en: "" },
       focus: { ar: "", en: "" },
       responsibilities: [{ ar: "", en: "" }],
@@ -1154,9 +1158,13 @@ export function TeamEditor({
     e.preventDefault();
     if (!editing) return;
     const initialsTrimmed = editing.initials.trim();
+    const avatarTrimmed = typeof editing.avatar === "string" ? editing.avatar.trim() : "";
+    const validAvatar =
+      !avatarTrimmed || (avatarTrimmed.startsWith("/") && avatarTrimmed.length <= 400);
     if (
       initialsTrimmed.length < 1 ||
       initialsTrimmed.length > 6 ||
+      !validAvatar ||
       !editing.name ||
       !hasLocalizedText(editing.name) ||
       !hasLocalizedText(editing.role) ||
@@ -1164,8 +1172,8 @@ export function TeamEditor({
     ) {
       notify(
         ar
-          ? "الأحرف الأولى (1–6 أحرف) والاسم والدور والتركيز مطلوبة باللغتين"
-          : "Initials (1–6 chars), name, role, and focus are required in both languages",
+          ? "الأحرف الأولى (1–6 أحرف) والاسم والدور والتركيز مطلوبة باللغتين، ومسار الصورة يجب أن يبدأ بـ /"
+          : "Initials (1–6 chars), name, role, and focus are required in both languages, and portrait path must start with /",
         true,
       );
       return;
@@ -1178,6 +1186,7 @@ export function TeamEditor({
       await saveMember({
         ...editing,
         initials: initialsTrimmed,
+        avatar: avatarTrimmed || undefined,
         slug: normalizedSlug,
         responsibilities: cleanResponsibilities,
       });
@@ -1264,6 +1273,51 @@ export function TeamEditor({
             value={editing.name ?? { ar: "", en: "" }}
             onChange={(name) => setEditing({ ...editing, name })}
           />
+          <div className="flex flex-col gap-2 rounded-xl border border-border bg-bg-elevated p-4">
+            <div className="flex flex-wrap items-center gap-4">
+              <TeamPortrait
+                src={resolveMemberAvatar(editing.slug, editing.avatar)}
+                alt={editing.name?.en || editing.role.en || editing.slug}
+                initials={editing.initials || "NS"}
+                interactive={false}
+                sizes="80px"
+                className="size-20 shrink-0"
+              />
+              <div className="flex flex-1 flex-col gap-1.5 min-w-[200px]">
+                <label className="text-xs font-medium text-muted">
+                  {ar ? "مسار الصورة الشخصية" : "Portrait image path"}
+                </label>
+                <input
+                  type="text"
+                  dir="ltr"
+                  maxLength={400}
+                  placeholder="/images/team/front-end.jpg"
+                  value={editing.avatar ?? ""}
+                  onChange={(e) => setEditing({ ...editing, avatar: e.target.value })}
+                  className={fieldInputClass}
+                />
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-1.5 pt-1">
+              <span className="text-[11px] text-muted">
+                {ar ? "صور الاستوديو الجاهزة:" : "Studio presets:"}
+              </span>
+              {Object.entries(TEAM_AVATAR_BY_SLUG).map(([presetKey, presetPath]) => (
+                <button
+                  key={presetKey}
+                  type="button"
+                  onClick={() => setEditing({ ...editing, avatar: presetPath })}
+                  className={`rounded-md border px-2 py-1 text-[11px] transition-colors ${
+                    editing.avatar === presetPath
+                      ? "border-primary bg-primary/15 text-text"
+                      : "border-border bg-surface text-muted hover:text-text"
+                  }`}
+                >
+                  {presetKey}
+                </button>
+              ))}
+            </div>
+          </div>
           <LocalizedFieldPair
             label={ar ? "المسمى الوظيفي / الدور" : "Role / Title"}
             value={editing.role}
@@ -1364,19 +1418,33 @@ export function TeamEditor({
             const displayRole = ar ? item.role.ar : item.role.en;
             return (
               <li key={item.slug} className="flex items-start justify-between gap-3 rounded-xl border border-border bg-surface p-4">
-                <div className="flex flex-col gap-1">
-                  <span className="text-xs text-muted">{item.initials} · #{item.order}</span>
-                  <span className="font-medium">
-                    {displayName ? `${displayName} — ${displayRole}` : displayRole}
-                  </span>
-                  <span className="line-clamp-2 text-xs text-muted">{ar ? item.focus.ar : item.focus.en}</span>
+                <div className="flex items-start gap-3">
+                  <TeamPortrait
+                    src={resolveMemberAvatar(item.slug, item.avatar)}
+                    alt={displayName || displayRole}
+                    initials={item.initials}
+                    interactive={false}
+                    sizes="48px"
+                    className="size-12 shrink-0"
+                  />
+                  <div className="flex flex-col gap-1">
+                    <span className="text-xs text-muted">{item.initials} · #{item.order}</span>
+                    <span className="font-medium">
+                      {displayName ? `${displayName} — ${displayRole}` : displayRole}
+                    </span>
+                    <span className="line-clamp-2 text-xs text-muted">{ar ? item.focus.ar : item.focus.en}</span>
+                  </div>
                 </div>
                 <div className="flex shrink-0 items-center gap-1">
                   <button
                     type="button"
                     onClick={() => {
                       setOriginalSlug(item.slug);
-                      setEditing({ ...item, name: item.name ?? { ar: "", en: "" } });
+                      setEditing({
+                        ...item,
+                        name: item.name ?? { ar: "", en: "" },
+                        avatar: resolveMemberAvatar(item.slug, item.avatar) ?? "",
+                      });
                     }}
                     className="rounded-lg border border-border px-2.5 py-1.5 text-xs hover:bg-surface-2"
                   >

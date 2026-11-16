@@ -8,7 +8,7 @@ import { Reveal } from "@/components/motion/reveal";
 import { Cta } from "@/components/sections/cta";
 import { Link } from "@/i18n/navigation";
 import { pickLocale } from "@/content/site";
-import { alternatesFor } from "@/lib/seo";
+import { pageMetadata } from "@/lib/seo";
 import { getHomeContent } from "@/lib/data";
 import { routing } from "@/i18n/routing";
 
@@ -21,11 +21,12 @@ export async function generateMetadata({
   const l = hasLocale(routing.locales, locale) ? locale : routing.defaultLocale;
   const t = await getTranslations({ locale: l, namespace: "blog" });
 
-  return {
+  return pageMetadata({
+    locale: l,
+    path: "/blog",
     title: t("title"),
     description: t("subtitle"),
-    alternates: alternatesFor(l, "/blog"),
-  };
+  });
 }
 
 export default async function BlogPage({

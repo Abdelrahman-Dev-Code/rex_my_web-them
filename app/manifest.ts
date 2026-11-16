@@ -2,14 +2,18 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "CodeNest — كود نست",
-    short_name: "CodeNest",
+    id: "/",
+    name: "Next Soft — نكست سوفت",
+    short_name: "Next Soft",
     description:
-      "Arabic-first engineering team building digital products worth trusting.",
+      "فريق هندسة وتطوير برمجيات يبني تطبيقات الويب عالية الأداء والمنتجات الرقمية بالعربية والإنجليزية.",
     start_url: "/ar",
+    scope: "/",
+    lang: "ar",
+    dir: "rtl",
     display: "standalone",
-    background_color: "#07070b",
-    theme_color: "#07070b",
+    background_color: "#06060a",
+    theme_color: "#06060a",
     icons: [
       {
         src: "/icon.svg",

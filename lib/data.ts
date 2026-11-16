@@ -10,6 +10,7 @@ import {
   posts as postsContent,
   process as processContent,
   projects as projectsContent,
+  resolveMemberAvatar,
   sectors as sectorsContent,
   services as servicesContent,
   site as siteContent,
@@ -82,18 +83,47 @@ export const getSite = unstable_cache(
       !remote.location || remote.location.ar === "الرياض، السعودية"
         ? siteContent.location
         : remote.location;
+    const name =
+      !remote.name ||
+      remote.name.en === "CodeNest" ||
+      remote.name.en === "NextSoft" ||
+      remote.name.ar === "كود نست" ||
+      remote.name.ar === "نيكست سوفت"
+        ? siteContent.name
+        : remote.name;
+    const legalName =
+      !remote.legalName ||
+      remote.legalName.en === "CodeNest Technology" ||
+      remote.legalName.en === "NextSoft Technology" ||
+      remote.legalName.ar === "كود نست للتقنية" ||
+      remote.legalName.ar === "نيكست سوفت للتقنية"
+        ? siteContent.legalName
+        : remote.legalName;
+    const email =
+      !remote.email || remote.email === "hello@codenest.example"
+        ? siteContent.email
+        : remote.email;
+    const resolvedAboutMission =
+      !remote.aboutMission ||
+      remote.aboutMission.en.startsWith("CodeNest ") ||
+      remote.aboutMission.ar.startsWith("كود نست ")
+        ? aboutMission
+        : remote.aboutMission;
     return {
       ...siteContent,
       ...remote,
+      name,
+      legalName,
+      email,
       whatsapp,
       location,
-      aboutMission: remote.aboutMission ?? aboutMission,
+      aboutMission: resolvedAboutMission,
       aboutSecondary: remote.aboutSecondary ?? aboutSecondary,
       stats: remote.stats ?? stats,
       process: remote.process ?? processContent,
     };
   },
-  ["cms-site-v2"],
+  ["cms-site-v4"],
   { revalidate: 3600, tags: ["site"] },
 );
 
@@ -176,29 +206,38 @@ export const getTeam = unstable_cache(
   async (): Promise<Member[]> => {
     const remote = await fetchCollectionFromDb<Member & { order?: number }>("team", "order", "asc");
     if (remote.length === 0) return teamContent;
-    return remote.map((m) => ({
-      slug: m.slug || m.id,
-      initials: m.initials,
-      name: m.name,
-      role: m.role,
-      focus: m.focus,
-      responsibilities: m.responsibilities,
-      stack: m.stack,
-      placeholder: m.placeholder,
-    }));
+    return remote.map((m) => {
+      const slug = m.slug || m.id;
+      return {
+        slug,
+        initials: m.initials,
+        name: m.name,
+        avatar: resolveMemberAvatar(slug, m.avatar),
+        role: m.role,
+        focus: m.focus,
+        responsibilities: m.responsibilities,
+        stack: m.stack,
+        placeholder: m.placeholder,
+      };
+    });
   },
-  ["cms-team"],
+  ["cms-team-v2"],
   { revalidate: 3600, tags: ["team"] },
 );
 
 export const getMember = unstable_cache(
   async (slug: string): Promise<Member | null> => {
     const remote = await fetchDocByIdFromDb<Member>("team", slug);
-    if (remote) return remote;
+    if (remote) {
+      return {
+        ...remote,
+        avatar: resolveMemberAvatar(remote.slug || slug, remote.avatar),
+      };
+    }
     const all = await getTeam();
     return all.find((member) => member.slug === slug) ?? null;
   },
-  ["cms-member"],
+  ["cms-member-v2"],
   { revalidate: 3600, tags: ["team"] },
 );
 

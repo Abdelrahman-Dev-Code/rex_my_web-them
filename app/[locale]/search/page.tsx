@@ -6,30 +6,21 @@ import { ArrowRight, Search } from "lucide-react";
 import { PageHero } from "@/components/layout/page-hero";
 import { Reveal } from "@/components/motion/reveal";
 import { Link } from "@/i18n/navigation";
-import {
-  navItems,
-  pickLocale,
-  techGroups,
-} from "@/content/site";
+import { navItems, pickLocale, techGroups } from "@/content/site";
 import { routing } from "@/i18n/routing";
 import { alternatesFor } from "@/lib/seo";
+import { matchesSearchQuery } from "@/lib/search";
 import { getHomeContent } from "@/lib/data";
 
-type GroupKey = "pages" | "services" | "projects" | "posts" | "team" | "skills";
+type GroupKey = "pages" | "services" | "projects" | "posts" | "team" | "skills" | "faqs";
 
 type SearchItem = {
   href: string;
   title: string;
   description: string;
+  keywords: string;
   group: GroupKey;
 };
-
-const normalize = (value: string) =>
-  value
-    .toLowerCase()
-    .replace(/[\u064B-\u0652\u0670\u0640]/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
 
 export async function generateMetadata({
   params,
@@ -59,37 +50,42 @@ export default async function SearchPage({
   if (!hasLocale(routing.locales, locale)) notFound();
 
   setRequestLocale(locale);
+  const ar = locale !== "en";
   const t = await getTranslations({ locale, namespace: "search" });
   const navT = await getTranslations({ locale, namespace: "nav" });
+  const faqT = await getTranslations({ locale, namespace: "faq" });
   const { q } = await searchParams;
   const content = await getHomeContent(locale);
 
   const query = (q ?? "").trim();
-  const normalized = normalize(query);
 
   const items: SearchItem[] = [
     ...navItems.map((item) => ({
       href: item.href,
       title: navT(item.key),
       description: navT(item.key),
+      keywords: `${item.key} ${navT(item.key)}`,
       group: "pages" as const,
     })),
     ...content.services.map((service) => ({
       href: "/services",
       title: pickLocale(service.title, locale),
       description: pickLocale(service.description, locale),
+      keywords: `${pickLocale(service.title, locale)} ${pickLocale(service.description, locale)}`,
       group: "services" as const,
     })),
     ...content.projects.map((project) => ({
       href: `/work/${project.slug}`,
       title: pickLocale(project.title, locale),
       description: pickLocale(project.summary, locale),
+      keywords: `${pickLocale(project.category, locale)} ${project.stack.join(" ")}`,
       group: "projects" as const,
     })),
     ...content.posts.map((post) => ({
       href: `/blog/${post.slug}`,
       title: pickLocale(post.title, locale),
       description: pickLocale(post.excerpt, locale),
+      keywords: pickLocale(post.tag, locale),
       group: "posts" as const,
     })),
     ...content.team.map((member) => {
@@ -100,6 +96,7 @@ export default async function SearchPage({
         href: `/team/${member.slug}`,
         title: displayName,
         description: pickLocale(member.focus, locale),
+        keywords: member.stack.join(" "),
         group: "team" as const,
       };
     }),
@@ -109,14 +106,22 @@ export default async function SearchPage({
         href: "/about#tech",
         title: tech.name,
         description: `${group ? pickLocale(group.title, locale) : ""} — ${pickLocale(tech.category, locale)} — ${pickLocale(tech.description, locale)}`,
+        keywords: `${tech.name} ${pickLocale(tech.category, locale)}`,
         group: "skills" as const,
       };
     }),
+    ...content.faqs.map((faq) => ({
+      href: "/#faq",
+      title: pickLocale(faq.q, locale),
+      description: pickLocale(faq.a, locale),
+      keywords: `${pickLocale(faq.q, locale)} ${pickLocale(faq.a, locale)}`,
+      group: "faqs" as const,
+    })),
   ];
 
-  const results = normalized
+  const results = query
     ? items.filter((item) =>
-        normalize(`${item.title} ${item.description}`).includes(normalized),
+        matchesSearchQuery(`${item.title} ${item.description} ${item.keywords}`, query),
       )
     : [];
 
@@ -127,14 +132,19 @@ export default async function SearchPage({
     { key: "posts", label: t("posts") },
     { key: "team", label: t("team") },
     { key: "skills", label: t("skills") },
+    { key: "faqs", label: faqT("eyebrow") },
   ];
+
+  const suggestedQueries = ar
+    ? ["Next.js", "تصميم", "تطوير الويب", "TypeScript", "تواصل"]
+    : ["Next.js", "Design", "Web development", "TypeScript", "Contact"];
 
   return (
     <>
       <PageHero
         eyebrow={t("label")}
         title={t("label")}
-        subtitle={normalized ? `${t("results")} — ${results.length}` : t("noQuery")}
+        subtitle={query ? `${t("results")} — ${results.length}` : t("noQuery")}
       />
 
       <section className="section">
@@ -162,14 +172,33 @@ export default async function SearchPage({
               </div>
               <button
                 type="submit"
-                className="h-12 rounded-full bg-primary px-6 text-sm font-medium text-primary-fg transition-opacity hover:opacity-90"
+                className="h-12 shrink-0 cursor-pointer rounded-full bg-primary px-6 text-sm font-medium text-primary-fg transition-opacity hover:opacity-90"
               >
                 {t("submit")}
               </button>
             </form>
           </Reveal>
 
-          {normalized && results.length === 0 ? (
+          {!query ? (
+            <Reveal delay={0.04}>
+              <div className="flex flex-wrap items-center gap-2 text-xs">
+                <span className="text-muted">
+                  {ar ? "مقترحات سريعة:" : "Quick searches:"}
+                </span>
+                {suggestedQueries.map((suggestion) => (
+                  <Link
+                    key={suggestion}
+                    href={`/search?q=${encodeURIComponent(suggestion)}`}
+                    className="rounded-lg border border-border bg-surface px-3 py-1.5 font-medium text-text transition-colors hover:border-primary/40 hover:bg-surface-2"
+                  >
+                    {suggestion}
+                  </Link>
+                ))}
+              </div>
+            </Reveal>
+          ) : null}
+
+          {query && results.length === 0 ? (
             <Reveal>
               <p
                 role="status"
