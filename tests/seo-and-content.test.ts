@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import robots from "@/app/robots";
 import { slugifyAscii } from "@/components/studio/studio-helpers";
-import { pickLocale, projects, services, site, team } from "@/content/site";
+import { navItems, pickLocale, projects, services, site, team } from "@/content/site";
 import { isBootstrapAdminEmail } from "@/lib/firebase/client";
 import { matchesSearchQuery, normalizeSearchText } from "@/lib/search";
 import { alternatesFor, breadcrumbItems, pageMetadata, toLocale } from "@/lib/seo";
@@ -84,5 +84,10 @@ describe("SEO & localization helpers", () => {
     expect(slugifyAscii("  My New Project!  ")).toBe("my-new-project");
     expect(slugifyAscii("___", "item")).toBe("___");
     expect(slugifyAscii("مرحبا", "post")).toMatch(/^post-/);
+  });
+
+  it("includes team and blog in primary top navigation items", () => {
+    const hrefs = navItems.map((item) => item.href);
+    expect(hrefs).toEqual(["/", "/services", "/work", "/team", "/blog", "/about"]);
   });
 });

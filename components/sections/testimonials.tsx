@@ -94,7 +94,7 @@ export function Testimonials({ items }: { items: Testimonial[] }) {
                 </span>
               </div>
               {active.placeholder ? (
-                <span className="text-[11px] uppercase tracking-wider text-muted rtl:tracking-normal">
+                <span className="text-xs text-muted">
                   {t("placeholder")}
                 </span>
               ) : null}

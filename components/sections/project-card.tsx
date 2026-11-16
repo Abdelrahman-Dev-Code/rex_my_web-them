@@ -13,6 +13,7 @@ type ProjectCardProps = {
   viewLabel: string;
   placeholderLabel: string;
   isPlaceholder?: boolean;
+  stack?: string[];
   highlight?: { value: string; label: string };
   href?: string;
   className?: string;
@@ -26,6 +27,7 @@ export function ProjectCard({
   viewLabel,
   placeholderLabel,
   isPlaceholder = false,
+  stack,
   highlight,
   href,
   className,
@@ -66,6 +68,8 @@ export function ProjectCard({
     card.style.setProperty("--rx", "0deg");
     card.style.setProperty("--ry", "0deg");
   };
+
+  const topStack = stack?.slice(0, 3) ?? [];
 
   return (
     <div
@@ -110,6 +114,17 @@ export function ProjectCard({
       </h3>
 
       <p className="relative text-sm leading-relaxed text-muted">{summary}</p>
+
+      {topStack.length > 0 ? (
+        <div dir="ltr" className="relative flex flex-wrap items-center gap-x-1.5 text-[11px] text-muted">
+          {topStack.map((item, idx) => (
+            <span key={item} className="inline-flex items-center gap-1.5">
+              {idx > 0 ? <span aria-hidden>·</span> : null}
+              <span>{item}</span>
+            </span>
+          ))}
+        </div>
+      ) : null}
 
       <div className="relative mt-auto flex items-center justify-between gap-4 border-t border-border/70 pt-4">
         {highlight ? (

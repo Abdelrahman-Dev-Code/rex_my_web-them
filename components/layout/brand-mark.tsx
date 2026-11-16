@@ -1,24 +1,73 @@
+"use client";
+
+import { useState } from "react";
+import Image from "next/image";
 import { cn } from "@/lib/utils";
 
 type BrandMarkProps = {
   size?: "sm" | "md" | "lg";
+  logoUrl?: string;
+  alt?: string;
   className?: string;
 };
 
 const sizeMap = {
-  sm: "size-8 rounded-lg text-xs",
-  md: "size-9 rounded-xl text-[13px]",
-  lg: "size-12 rounded-2xl text-base",
+  sm: { box: "size-8 rounded-lg text-xs", px: 32 },
+  md: { box: "size-9 rounded-xl text-[13px]", px: 36 },
+  lg: { box: "size-12 rounded-2xl text-base", px: 48 },
 } as const;
 
-export function BrandMark({ size = "md", className }: BrandMarkProps) {
+function resolveLogoSrc(logoUrl?: string): string | null {
+  const cleaned = typeof logoUrl === "string" ? logoUrl.trim() : "";
+  if (!cleaned) return null;
+  if (cleaned.startsWith("/") || cleaned.startsWith("data:image/")) {
+    return cleaned;
+  }
+  if (cleaned.startsWith("https://")) {
+    let hash = 0;
+    for (let i = 0; i < cleaned.length; i += 1) {
+      hash = (hash * 31 + cleaned.charCodeAt(i)) | 0;
+    }
+    return `/api/brand-logo?v=${Math.abs(hash)}`;
+  }
+  return null;
+}
+
+export function BrandMark({ size = "md", logoUrl, alt = "Next Soft", className }: BrandMarkProps) {
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+  const metrics = sizeMap[size];
+  const resolvedSrc = resolveLogoSrc(logoUrl);
+  const showCustom = Boolean(resolvedSrc && failedSrc !== resolvedSrc);
+
+  if (showCustom && resolvedSrc) {
+    return (
+      <span
+        className={cn(
+          "relative inline-grid shrink-0 place-items-center overflow-hidden border border-border/80 bg-surface/90 p-1 shadow-sm transition-all duration-300",
+          metrics.box,
+          className,
+        )}
+      >
+        <Image
+          src={resolvedSrc}
+          alt={alt}
+          width={metrics.px}
+          height={metrics.px}
+          referrerPolicy="no-referrer"
+          onError={() => setFailedSrc(resolvedSrc)}
+          className="size-full object-contain"
+        />
+      </span>
+    );
+  }
+
   return (
     <span
       aria-hidden
       dir="ltr"
       className={cn(
         "relative inline-grid shrink-0 place-items-center overflow-hidden bg-gradient-to-br from-primary via-border to-accent p-px shadow-sm transition-all duration-300",
-        sizeMap[size],
+        metrics.box,
         className,
       )}
     >

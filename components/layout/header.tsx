@@ -14,10 +14,11 @@ import { buttonClass } from "@/components/ui/button";
 type HeaderProps = {
   nav: { key: string; href: string }[];
   siteName: string;
+  logoUrl?: string;
   paletteItems: PaletteItem[];
 };
 
-export function Header({ nav, siteName, paletteItems }: HeaderProps) {
+export function Header({ nav, siteName, logoUrl, paletteItems }: HeaderProps) {
   const t = useTranslations();
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
@@ -123,14 +124,14 @@ export function Header({ nav, siteName, paletteItems }: HeaderProps) {
           className="flex shrink-0 items-center gap-2.5 whitespace-nowrap"
           aria-label={siteName}
         >
-          <BrandMark size={scrolled ? "sm" : "md"} />
+          <BrandMark size={scrolled ? "sm" : "md"} logoUrl={logoUrl} alt={siteName} />
           <span className="text-base font-semibold tracking-tight whitespace-nowrap md:text-lg">
             {siteName}
           </span>
         </Link>
 
         {/* Zone 2: Primary navigation (desktop >= lg for zero tablet crowding) */}
-        <nav aria-label={t("common.menu")} className="hidden items-center gap-1 lg:flex">
+        <nav aria-label={t("common.menu")} className="hidden items-center gap-0.5 lg:flex xl:gap-1">
           {nav.map((item) => {
             const active =
               item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
@@ -140,15 +141,15 @@ export function Header({ nav, siteName, paletteItems }: HeaderProps) {
                 href={item.href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "group relative shrink-0 whitespace-nowrap px-3.5 py-2 text-sm transition-colors duration-200",
-                  active ? "font-medium text-text" : "text-muted hover:text-text",
+                  "group relative shrink-0 whitespace-nowrap px-2.5 py-2 text-sm transition-colors duration-200 xl:px-3.5",
+                  active ? "font-semibold text-text" : "text-muted hover:text-text",
                 )}
               >
                 {t(`nav.${item.key}`)}
                 <span
                   aria-hidden
                   className={cn(
-                    "absolute inset-x-3.5 bottom-1 h-px bg-gradient-to-r from-transparent via-primary to-transparent transition-transform duration-200",
+                    "absolute inset-x-2.5 bottom-1 h-px bg-gradient-to-r from-transparent via-primary to-transparent transition-transform duration-200 xl:inset-x-3.5",
                     active ? "scale-x-100" : "scale-x-0 group-hover:scale-x-100",
                   )}
                 />

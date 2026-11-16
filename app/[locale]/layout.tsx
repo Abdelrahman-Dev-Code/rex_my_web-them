@@ -256,6 +256,7 @@ export default async function LocaleLayout({
             <Header
               nav={navItems}
               siteName={site.name[l]}
+              logoUrl={site.logoUrl}
               paletteItems={paletteItems}
             />
             <main id="main" className="flex-1 pt-16 md:pt-20">

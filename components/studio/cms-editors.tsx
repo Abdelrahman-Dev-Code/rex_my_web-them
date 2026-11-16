@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { User } from "firebase/auth";
-import { Plus, Save, Trash2 } from "lucide-react";
+import { Plus, RotateCcw, Save, Trash2, Upload } from "lucide-react";
 import {
   TEAM_AVATAR_BY_SLUG,
   resolveMemberAvatar,
@@ -13,7 +13,9 @@ import {
   type Service,
   type Tech,
 } from "@/content/site";
+import { BrandMark } from "@/components/layout/brand-mark";
 import { TeamPortrait } from "@/components/ui/team-portrait";
+import { prepareLogoDataUrl } from "@/lib/logo-upload";
 import {
   deleteCmsDocument,
   saveFaq,
@@ -62,15 +64,60 @@ export function SiteSettingsEditor({
 }) {
   const [form, setForm] = useState<SiteSettingsDoc>(initial);
   const [saving, setSaving] = useState(false);
+  const [processingLogo, setProcessingLogo] = useState(false);
+  const logoInputRef = useRef<HTMLInputElement>(null);
   const ar = locale === "ar";
 
   const statsList = form.stats ?? [];
   const processList = form.process ?? [];
 
+  const handleLogoFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+
+    setProcessingLogo(true);
+    try {
+      const { dataUrl } = await prepareLogoDataUrl(file);
+      setForm((prev) => ({ ...prev, logoUrl: dataUrl }));
+      notify(
+        ar
+          ? "تم تجهيز الشعار ومعاينته — اضغط حفظ التغييرات لتثبيته في الموقع"
+          : "Logo prepared for preview — click Save changes to publish it live",
+      );
+    } catch (err) {
+      const code = err instanceof Error ? err.message : "";
+      if (code === "FILE_TOO_LARGE" || code === "LOGO_DATA_TOO_LARGE") {
+        notify(
+          ar
+            ? "حجم الشعار كبير جداً. اختر صورة أصغر (PNG أو WebP أو SVG مبسّط)."
+            : "Logo file is too large. Please choose a smaller PNG, WebP, or compact SVG.",
+          true,
+        );
+      } else {
+        notify(
+          ar
+            ? "تعذر قراءة ملف الشعار. الصيغ المدعومة: PNG وJPG وWebP وSVG."
+            : "Could not read logo file. Supported formats: PNG, JPG, WebP, SVG.",
+          true,
+        );
+      }
+    } finally {
+      setProcessingLogo(false);
+    }
+  };
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     const emailTrimmed = form.email.trim();
     const normalizedWhatsapp = form.whatsapp.replace(/\D+/g, "");
+    const logoTrimmed = typeof form.logoUrl === "string" ? form.logoUrl.trim() : "";
+    const validLogo =
+      !logoTrimmed ||
+      ((logoTrimmed.startsWith("data:image/") ||
+        logoTrimmed.startsWith("/") ||
+        logoTrimmed.startsWith("https://")) &&
+        logoTrimmed.length <= 80000);
     const validEmail =
       emailTrimmed.length >= 5 &&
       emailTrimmed.length <= 160 &&
@@ -99,6 +146,7 @@ export function SiteSettingsEditor({
       !hasLocalizedText(form.tagline) ||
       !hasLocalizedText(form.shortTagline) ||
       !hasLocalizedText(form.location) ||
+      !validLogo ||
       !validEmail ||
       !validWhatsapp ||
       !validSocials ||
@@ -107,8 +155,8 @@ export function SiteSettingsEditor({
     ) {
       notify(
         ar
-          ? "تأكد من ملء جميع الحقول الأساسية والإحصائيات وخطوات العمل بالعربية والإنجليزية، وبريد ورقم واتساب (6–20 رقماً) وروابط تبدأ بـ https://."
-          : "Please complete all Arabic/English fields, stats, process steps, valid email, WhatsApp (6–20 digits), and valid social URLs.",
+          ? "تأكد من ملء جميع الحقول الأساسية والإحصائيات وخطوات العمل بالعربية والإنجليزية، وشعار بصيغة صالحة، وبريد ورقم واتساب (6–20 رقماً) وروابط تبدأ بـ https://."
+          : "Please complete all Arabic/English fields, valid logo format, stats, process steps, valid email, WhatsApp (6–20 digits), and valid social URLs.",
         true,
       );
       return;
@@ -118,6 +166,7 @@ export function SiteSettingsEditor({
     try {
       const cleanedForm: SiteSettingsDoc = {
         ...form,
+        logoUrl: logoTrimmed || undefined,
         email: emailTrimmed,
         whatsapp: normalizedWhatsapp,
         socials: form.socials.map((s) => ({
@@ -128,7 +177,7 @@ export function SiteSettingsEditor({
       await saveSiteSettings(cleanedForm);
       await triggerRevalidation(user, ["site"]);
       await onSaved();
-      notify(ar ? "تم حفظ إعدادات الموقع" : "Site settings saved");
+      notify(ar ? "تم حفظ إعدادات الموقع والشعار" : "Site settings & logo saved");
     } catch {
       notify(ar ? "فشل حفظ الإعدادات" : "Failed to save settings", true);
     } finally {
@@ -139,11 +188,108 @@ export function SiteSettingsEditor({
   return (
     <form onSubmit={handleSave} className="flex flex-col gap-6 rounded-2xl border border-border bg-surface p-6">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
-        <h2 className="text-lg font-semibold">{ar ? "إعدادات الهوية والتواصل" : "Brand & Contact Settings"}</h2>
-        <button type="submit" disabled={saving} className={buttonClass("primary", "sm")}>
+        <h2 className="text-lg font-semibold">{ar ? "إعدادات الهوية والشعار والتواصل" : "Brand, Logo & Contact Settings"}</h2>
+        <button type="submit" disabled={saving || processingLogo} className={buttonClass("primary", "sm")}>
           <Save className="size-4" aria-hidden />
           {saving ? (ar ? "جارٍ الحفظ…" : "Saving…") : ar ? "حفظ التغييرات" : "Save changes"}
         </button>
+      </div>
+
+      <div className="flex flex-col gap-4 rounded-2xl border border-border bg-bg-elevated p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-col gap-1">
+            <h3 className="text-sm font-semibold">{ar ? "شعار الموقع المخصّص" : "Custom Site Logo"}</h3>
+            <p className="text-xs text-muted">
+              {ar
+                ? "ارفع شعار فريقك (PNG بخلفية شفافة، SVG، WebP، أو JPG) وسيظهر فوراً في الشريط العلوي والتذييل."
+                : "Upload your team logo (transparent PNG, SVG, WebP, or JPG) to display it across the header and footer."}
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              ref={logoInputRef}
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/svg+xml"
+              onChange={(e) => void handleLogoFileChange(e)}
+              className="sr-only"
+            />
+            <button
+              type="button"
+              disabled={processingLogo}
+              onClick={() => logoInputRef.current?.click()}
+              className={buttonClass("outline", "sm")}
+            >
+              <Upload className="size-3.5" aria-hidden />
+              {processingLogo
+                ? ar
+                  ? "جارٍ التجهيز…"
+                  : "Preparing…"
+                : ar
+                  ? "رفع شعار من جهازك"
+                  : "Upload logo"}
+            </button>
+            {form.logoUrl ? (
+              <button
+                type="button"
+                onClick={() => setForm({ ...form, logoUrl: "" })}
+                className={buttonClass("ghost", "sm")}
+              >
+                <RotateCcw className="size-3.5" aria-hidden />
+                {ar ? "الشعار الافتراضي" : "Default mark"}
+              </button>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-[#08080e] px-4 py-3 text-[#f5f5f7]">
+            <div className="flex items-center gap-2.5">
+              <BrandMark
+                size="md"
+                logoUrl={form.logoUrl}
+                alt={ar ? form.name.ar : form.name.en}
+              />
+              <span className="text-sm font-semibold">
+                {ar ? form.name.ar : form.name.en}
+              </span>
+            </div>
+            <span className="text-[11px] text-white/60">{ar ? "الوضع الداكن" : "Dark mode"}</span>
+          </div>
+
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-black/10 bg-[#f8f8f5] px-4 py-3 text-[#0b0b10]">
+            <div className="flex items-center gap-2.5">
+              <BrandMark
+                size="md"
+                logoUrl={form.logoUrl}
+                alt={ar ? form.name.ar : form.name.en}
+              />
+              <span className="text-sm font-semibold">
+                {ar ? form.name.ar : form.name.en}
+              </span>
+            </div>
+            <span className="text-[11px] text-black/60">{ar ? "الوضع الفاتح" : "Light mode"}</span>
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <label className="text-xs font-medium text-muted">
+            {ar ? "أو أدخل مسار/رابط الشعار مباشرة (اختياري)" : "Or enter logo path / HTTPS URL directly (optional)"}
+          </label>
+          <input
+            type="text"
+            dir="ltr"
+            value={form.logoUrl?.startsWith("data:image/") ? "" : (form.logoUrl ?? "")}
+            onChange={(e) => setForm({ ...form, logoUrl: e.target.value })}
+            placeholder={
+              form.logoUrl?.startsWith("data:image/")
+                ? ar
+                  ? "شعار مرفوع ومضغوط جاهز للحفظ"
+                  : "Uploaded logo ready — save changes to publish"
+                : "/images/logo.png"
+            }
+            className={fieldInputClass}
+          />
+        </div>
       </div>
 
       <LocalizedFieldPair

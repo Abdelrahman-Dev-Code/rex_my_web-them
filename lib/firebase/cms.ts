@@ -122,11 +122,14 @@ function normalizeSiteSettingsData(data: Record<string, unknown>): SiteSettingsD
     ? aboutMission
     : rawAboutMission;
 
+  const rawLogoUrl = typeof data.logoUrl === "string" ? data.logoUrl.trim().slice(0, 80000) : "";
+
   return {
     name,
     legalName,
     tagline: (data.tagline as Localized | undefined) ?? defaultSite.tagline,
     shortTagline: (data.shortTagline as Localized | undefined) ?? defaultSite.shortTagline,
+    logoUrl: rawLogoUrl || undefined,
     email,
     whatsapp,
     location,
@@ -211,6 +214,8 @@ export async function fetchDocByIdFromDb<T>(
 export async function saveSiteSettings(payload: SiteSettingsDoc): Promise<void> {
   const path = "siteSettings/main";
   try {
+    const logoTrimmed =
+      typeof payload.logoUrl === "string" ? payload.logoUrl.trim().slice(0, 80000) : "";
     const data: Record<string, unknown> = {
       name: payload.name,
       legalName: payload.legalName,
@@ -222,6 +227,7 @@ export async function saveSiteSettings(payload: SiteSettingsDoc): Promise<void> 
       socials: payload.socials.slice(0, 10),
       updatedAt: serverTimestamp(),
     };
+    if (logoTrimmed) data.logoUrl = logoTrimmed;
     if (payload.aboutMission) data.aboutMission = payload.aboutMission;
     if (payload.aboutSecondary) data.aboutSecondary = payload.aboutSecondary;
     if (Array.isArray(payload.stats)) {

@@ -109,9 +109,14 @@ export const getSite = unstable_cache(
       remote.aboutMission.ar.startsWith("كود نست ")
         ? aboutMission
         : remote.aboutMission;
+    const logoUrl =
+      typeof remote.logoUrl === "string" && remote.logoUrl.trim().length > 0
+        ? remote.logoUrl.trim()
+        : undefined;
     return {
       ...siteContent,
       ...remote,
+      logoUrl,
       name,
       legalName,
       email,
@@ -123,7 +128,7 @@ export const getSite = unstable_cache(
       process: remote.process ?? processContent,
     };
   },
-  ["cms-site-v4"],
+  ["cms-site-v5"],
   { revalidate: 3600, tags: ["site"] },
 );
 

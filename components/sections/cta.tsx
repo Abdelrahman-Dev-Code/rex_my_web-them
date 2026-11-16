@@ -1,6 +1,6 @@
 import { getTranslations } from "next-intl/server";
-import { Mail, MessageCircle } from "lucide-react";
-import { buttonClass } from "@/components/ui/button";
+import { ArrowRight, MessageCircle } from "lucide-react";
+import { buttonClass, LinkButton } from "@/components/ui/button";
 import { CopyButton } from "@/components/ui/copy-button";
 import { Magnetic } from "@/components/motion/magnetic";
 import { Reveal } from "@/components/motion/reveal";
@@ -28,13 +28,10 @@ export async function Cta({ content }: { content: HomeContent }) {
               <p className="max-w-xl text-pretty text-muted sm:text-lg">{t("subtitle")}</p>
               <div className="flex flex-wrap items-center gap-3">
                 <Magnetic strength={0.2}>
-                  <a
-                    href={`mailto:${site.email}`}
-                    className={buttonClass("primary", "lg", "w-full sm:w-auto")}
-                  >
-                    <Mail className="size-4" aria-hidden />
+                  <LinkButton href="/contact" size="lg" className="w-full sm:w-auto">
                     {t("primary")}
-                  </a>
+                    <ArrowRight className="size-4 rtl:rotate-180" aria-hidden />
+                  </LinkButton>
                 </Magnetic>
                 <Magnetic strength={0.2}>
                   <a
@@ -49,7 +46,13 @@ export async function Cta({ content }: { content: HomeContent }) {
                 </Magnetic>
               </div>
               <div className="flex flex-wrap items-center gap-3 border-t border-border/70 pt-4 text-xs text-muted">
-                <span dir="ltr">{site.email}</span>
+                <a
+                  href={`mailto:${site.email}`}
+                  dir="ltr"
+                  className="transition-colors hover:text-text"
+                >
+                  {site.email}
+                </a>
                 <CopyButton
                   value={site.email}
                   label={ft("copyEmail")}

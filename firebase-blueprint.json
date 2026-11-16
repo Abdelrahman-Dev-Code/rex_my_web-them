@@ -9,6 +9,7 @@
         "legalName": { "type": "object", "description": "Localized legal name {ar, en}" },
         "tagline": { "type": "object", "description": "Localized tagline {ar, en}" },
         "shortTagline": { "type": "object", "description": "Short localized tagline {ar, en}" },
+        "logoUrl": { "type": "string", "maxLength": 80000, "description": "Optional custom brand logo path, HTTPS URL, or compact optimized data URL" },
         "email": { "type": "string", "format": "email", "maxLength": 160 },
         "whatsapp": { "type": "string", "maxLength": 32, "pattern": "^[0-9]{6,20}$" },
         "location": { "type": "object", "description": "Localized office location {ar, en}" },

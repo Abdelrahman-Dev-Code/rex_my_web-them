@@ -45,16 +45,19 @@ export async function Sectors({
         </Reveal>
 
         <Reveal delay={0.05} y={16}>
-          <ul className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+          <ul className="grid grid-cols-2 gap-2.5 sm:grid-cols-4 lg:gap-3">
             {items.map((sector, index) => {
               const Icon = icons[sector.icon];
               return (
                 <li
                   key={`${sector.icon}-${index}`}
-                  className="flex items-center gap-2.5 rounded-xl border border-border bg-surface px-4 py-2.5 text-sm text-muted transition-colors hover:border-primary/40 hover:text-text"
+                  className="group flex items-center gap-3 rounded-xl border border-border bg-surface px-4 py-3 text-sm text-muted transition-colors duration-200 hover:border-primary/40 hover:bg-surface-2 hover:text-text"
                 >
-                  <Icon className="size-4 shrink-0 text-primary" aria-hidden />
-                  <span className="truncate">{pickLocale(sector.label, locale)}</span>
+                  <Icon
+                    className="size-4 shrink-0 text-primary transition-transform duration-200 group-hover:scale-110"
+                    aria-hidden
+                  />
+                  <span className="truncate font-medium">{pickLocale(sector.label, locale)}</span>
                 </li>
               );
             })}

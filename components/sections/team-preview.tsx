@@ -22,11 +22,17 @@ export async function TeamPreview({
     <section className="section border-y border-border bg-bg-elevated">
       <div className="container-page flex flex-col gap-10">
         <Reveal>
-          <SectionHeading
-            eyebrow={t("eyebrow")}
-            title={t("homeTitle")}
-            subtitle={t("homeSubtitle")}
-          />
+          <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+            <SectionHeading
+              eyebrow={t("eyebrow")}
+              title={t("homeTitle")}
+              subtitle={t("homeSubtitle")}
+            />
+            <Link href="/team" className={buttonClass("outline", "md", "w-fit shrink-0 whitespace-nowrap")}>
+              {t("homeCta")}
+              <ArrowRight className="size-4 rtl:rotate-180" aria-hidden />
+            </Link>
+          </div>
         </Reveal>
 
         <ul className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
@@ -89,13 +95,6 @@ export async function TeamPreview({
             );
           })}
         </ul>
-
-        <Reveal>
-          <Link href="/team" className={buttonClass("outline", "md", "w-fit")}>
-            {t("homeCta")}
-            <ArrowRight className="size-4 rtl:rotate-180" aria-hidden />
-          </Link>
-        </Reveal>
       </div>
     </section>
   );

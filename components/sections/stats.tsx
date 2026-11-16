@@ -8,13 +8,13 @@ export async function Stats({ content }: { content: HomeContent }) {
 
   return (
     <section className="border-y border-border bg-bg-elevated">
-      <div className="container-page grid grid-cols-2 divide-border sm:grid-cols-2 lg:grid-cols-4 lg:divide-x rtl:lg:divide-x-reverse">
+      <div className="container-page grid grid-cols-2 divide-border lg:grid-cols-4 lg:divide-x rtl:lg:divide-x-reverse">
         {content.stats.map((stat, index) => (
           <Reveal
             key={`${stat.label.en}-${index}`}
             delay={index * 0.06}
             y={20}
-            className="flex flex-col gap-1.5 border-b border-border/60 py-8 pe-4 sm:py-12 lg:border-b-0 lg:px-6 lg:first:ps-0 lg:last:pe-0"
+            className="flex flex-col gap-1.5 border-b border-border/60 py-8 pe-4 sm:py-12 [&:nth-last-child(-n+2)]:border-b-0 lg:border-b-0 lg:px-6 lg:first:ps-0 lg:last:pe-0"
           >
             <span
               dir="ltr"

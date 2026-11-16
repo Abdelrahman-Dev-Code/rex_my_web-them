@@ -15,8 +15,9 @@ export const navItems: NavItem[] = [
   { key: "home", href: "/" },
   { key: "services", href: "/services" },
   { key: "work", href: "/work" },
+  { key: "team", href: "/team" },
+  { key: "blog", href: "/blog" },
   { key: "about", href: "/about" },
-  { key: "contact", href: "/contact" },
 ];
 
 export type SiteMeta = {
@@ -24,6 +25,7 @@ export type SiteMeta = {
   legalName: Localized;
   tagline: Localized;
   shortTagline: Localized;
+  logoUrl?: string;
   email: string;
   whatsapp: string;
   location: Localized;

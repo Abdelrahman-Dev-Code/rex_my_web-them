@@ -25,7 +25,7 @@ export function PageHero({
 
       <div className="container-page flex flex-col gap-5 pt-12 pb-16 sm:pt-16 sm:pb-20">
         {breadcrumbs}
-        <span className="inline-flex w-fit items-center gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-primary rtl:tracking-normal">
+        <span className="inline-flex w-fit items-center gap-2 text-xs font-semibold text-primary">
           <span aria-hidden className="h-px w-4 bg-primary/70" />
           {eyebrow}
         </span>

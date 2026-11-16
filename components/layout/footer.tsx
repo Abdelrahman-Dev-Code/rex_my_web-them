@@ -23,7 +23,7 @@ export async function Footer({ nav, locale, site }: FooterProps) {
       <div className="container-page grid gap-10 py-14 sm:grid-cols-2 lg:grid-cols-[1.45fr_1fr_1fr_1.15fr] lg:py-16">
         <div className="flex flex-col gap-4">
           <Link href="/" className="flex w-fit items-center gap-2.5">
-            <BrandMark size="md" />
+            <BrandMark size="md" logoUrl={site.logoUrl} alt={name} />
             <span className="text-base font-semibold tracking-tight">{name}</span>
           </Link>
           <p className="max-w-xs text-sm leading-relaxed text-muted">
@@ -50,28 +50,31 @@ export async function Footer({ nav, locale, site }: FooterProps) {
           className="flex flex-col gap-3"
         >
           <h2 className="text-sm font-semibold text-text">
-            {ar ? "المعرفة والأدوات" : "Studio & Tools"}
+            {ar ? "أدوات ومعلومات" : "Studio & Tools"}
           </h2>
-          {["team", "blog"].map((key) => (
-            <Link
-              key={key}
-              href={`/${key}`}
-              className="w-fit text-sm text-muted transition-colors hover:text-text"
-            >
-              {navT(key)}
-            </Link>
-          ))}
           <Link
-            href="/about"
+            href="/contact"
             className="w-fit text-sm text-muted transition-colors hover:text-text"
           >
-            {navT("about")}
+            {navT("contact")}
           </Link>
           <Link
             href="/search"
             className="w-fit text-sm text-muted transition-colors hover:text-text"
           >
             {ar ? "البحث في الموقع" : "Site Search"}
+          </Link>
+          <Link
+            href="/studio"
+            className="w-fit text-sm text-muted transition-colors hover:text-text"
+          >
+            {ar ? "إدارة المحتوى (Studio)" : "Content Studio"}
+          </Link>
+          <Link
+            href="/privacy"
+            className="w-fit text-sm text-muted transition-colors hover:text-text"
+          >
+            {legalT("privacy")}
           </Link>
         </nav>
 

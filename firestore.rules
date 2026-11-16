@@ -46,11 +46,12 @@ service cloud.firestore {
     // Entity Validation Blueprints
     function isValidSiteSettings(data) {
       return data.keys().hasAll(['name', 'legalName', 'tagline', 'shortTagline', 'email', 'whatsapp', 'location', 'socials', 'updatedAt']) &&
-        data.keys().hasOnly(['name', 'legalName', 'tagline', 'shortTagline', 'email', 'whatsapp', 'location', 'socials', 'aboutMission', 'aboutSecondary', 'stats', 'process', 'updatedAt']) &&
+        data.keys().hasOnly(['name', 'legalName', 'tagline', 'shortTagline', 'logoUrl', 'email', 'whatsapp', 'location', 'socials', 'aboutMission', 'aboutSecondary', 'stats', 'process', 'updatedAt']) &&
         isLocalized(data.name, 120) &&
         isLocalized(data.legalName, 160) &&
         isLocalized(data.tagline, 240) &&
         isLocalized(data.shortTagline, 80) &&
+        (!('logoUrl' in data) || (data.logoUrl is string && data.logoUrl.size() <= 80000)) &&
         data.email is string && data.email.size() >= 5 && data.email.size() <= 160 &&
         data.whatsapp is string && data.whatsapp.size() >= 6 && data.whatsapp.size() <= 32 &&
         isLocalized(data.location, 160) &&

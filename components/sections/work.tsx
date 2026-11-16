@@ -16,11 +16,17 @@ export async function Work({ content }: { content: HomeContent }) {
     <section id="work" className="section scroll-mt-20 border-y border-border bg-bg-elevated">
       <div className="container-page flex flex-col gap-12">
         <Reveal>
-          <SectionHeading
-            eyebrow={t("eyebrow")}
-            title={t("title")}
-            subtitle={t("subtitle")}
-          />
+          <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+            <SectionHeading
+              eyebrow={t("eyebrow")}
+              title={t("title")}
+              subtitle={t("subtitle")}
+            />
+            <Link href="/work" className={buttonClass("outline", "md", "w-fit shrink-0 whitespace-nowrap")}>
+              {t("backToWork")}
+              <ArrowRight className="size-4 rtl:rotate-180" aria-hidden />
+            </Link>
+          </div>
         </Reveal>
 
         <ul className="grid gap-4 md:grid-cols-2">
@@ -37,6 +43,7 @@ export async function Work({ content }: { content: HomeContent }) {
                     viewLabel={t("viewCase")}
                     placeholderLabel={t("placeholderBadge")}
                     isPlaceholder={project.placeholder}
+                    stack={project.stack}
                     highlight={
                       firstResult
                         ? {
@@ -52,13 +59,6 @@ export async function Work({ content }: { content: HomeContent }) {
             );
           })}
         </ul>
-
-        <Reveal>
-          <Link href="/work" className={buttonClass("outline", "md", "w-fit")}>
-            {t("backToWork")}
-            <ArrowRight className="size-4 rtl:rotate-180" aria-hidden />
-          </Link>
-        </Reveal>
       </div>
     </section>
   );

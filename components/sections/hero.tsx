@@ -13,21 +13,25 @@ export async function Hero({ content }: { content: HomeContent }) {
 
   const pillars = [
     {
+      index: "01",
       title: "Next.js 16",
       detail: ar ? "هندسة خوادم سريعة الاستجابة" : "Server-first App Router",
       tone: "text-text",
     },
     {
+      index: "02",
       title: "RTL / LTR",
       detail: ar ? "تجربة ثنائية اللغة أصلية" : "Native bilingual craft",
       tone: "text-accent",
     },
     {
+      index: "03",
       title: "Cloud & CMS",
       detail: ar ? "إدارة محتوى وتحديثات فورية" : "Firestore CMS & realtime",
       tone: "text-text",
     },
     {
+      index: "04",
       title: "WCAG AA",
       detail: ar ? "إتاحة وتباين عالي الدقة" : "Accessible on every screen",
       tone: "text-primary",
@@ -36,25 +40,25 @@ export async function Hero({ content }: { content: HomeContent }) {
 
   return (
     <section className="relative overflow-hidden border-b border-border/60">
-      <div aria-hidden className="absolute inset-0 -z-10 grid-backdrop opacity-35" />
+      <div aria-hidden className="absolute inset-0 -z-10 grid-backdrop opacity-30" />
       <div
         aria-hidden
-        className="pointer-events-none absolute -top-44 left-1/2 -z-10 h-[28rem] w-[46rem] -translate-x-1/2 rounded-full bg-[radial-gradient(closest-side,color-mix(in_srgb,var(--primary)_20%,transparent),transparent)]"
+        className="pointer-events-none absolute -top-44 left-1/2 -z-10 h-[28rem] w-[46rem] -translate-x-1/2 rounded-full bg-[radial-gradient(closest-side,color-mix(in_srgb,var(--primary)_18%,transparent),transparent)]"
       />
       <div
         aria-hidden
-        className="pointer-events-none absolute -bottom-32 end-0 -z-10 size-96 rounded-full bg-[radial-gradient(closest-side,color-mix(in_srgb,var(--accent)_12%,transparent),transparent)]"
+        className="pointer-events-none absolute -bottom-32 end-0 -z-10 size-96 rounded-full bg-[radial-gradient(closest-side,color-mix(in_srgb,var(--accent)_11%,transparent),transparent)]"
       />
 
-      <div className="container-page flex flex-col gap-10 pt-8 pb-12 sm:pt-12 sm:pb-16 lg:gap-12 lg:pt-14 lg:pb-18">
-        <div className="grid items-stretch gap-10 lg:grid-cols-[1.06fr_0.94fr] lg:gap-12">
+      <div className="container-page flex flex-col gap-8 pt-8 pb-12 sm:pt-12 sm:pb-16 lg:gap-11 lg:pt-14 lg:pb-16">
+        <div className="grid items-stretch gap-8 lg:grid-cols-[1.06fr_0.94fr] lg:gap-12">
           <div className="flex flex-col justify-center gap-6">
             <span className="inline-flex w-fit items-center gap-2.5 text-xs font-semibold text-accent">
               <span aria-hidden className="h-px w-5 bg-accent/70" />
               {t("badge")}
             </span>
 
-            <h1 className="max-w-2xl text-balance text-[clamp(2.15rem,4.1vw,3.75rem)] font-semibold leading-[1.16]">
+            <h1 className="max-w-2xl text-balance text-[clamp(2.25rem,4.1vw,3.75rem)] font-semibold leading-[1.15]">
               {t("title")} <span className="text-gradient">{t("titleAccent")}</span>
             </h1>
 
@@ -62,7 +66,7 @@ export async function Hero({ content }: { content: HomeContent }) {
               {t("subtitle")}
             </p>
 
-            <div className="flex flex-wrap items-center gap-3 pt-2">
+            <div className="flex flex-wrap items-center gap-3 pt-1">
               <Magnetic strength={0.2}>
                 <LinkButton href="/contact" size="lg">
                   {t("ctaPrimary")}
@@ -80,7 +84,7 @@ export async function Hero({ content }: { content: HomeContent }) {
           <div className="relative flex flex-col">
             <div
               aria-hidden
-              className="pointer-events-none absolute -inset-4 -z-10 rounded-[2rem] bg-[radial-gradient(circle_at_30%_30%,color-mix(in_srgb,var(--primary)_18%,transparent),transparent_62%),radial-gradient(circle_at_80%_80%,color-mix(in_srgb,var(--accent)_14%,transparent),transparent_62%)]"
+              className="pointer-events-none absolute -inset-4 -z-10 rounded-[2rem] bg-[radial-gradient(circle_at_30%_30%,color-mix(in_srgb,var(--primary)_16%,transparent),transparent_62%),radial-gradient(circle_at_80%_80%,color-mix(in_srgb,var(--accent)_12%,transparent),transparent_62%)]"
             />
             <Parallax speed={0.06} className="relative h-full">
               <div className="gradient-border surface-card group relative aspect-[4/3] w-full overflow-hidden lg:h-full">
@@ -110,7 +114,7 @@ export async function Hero({ content }: { content: HomeContent }) {
                 />
                 <div
                   aria-hidden
-                  className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-transparent"
+                  className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent"
                 />
               </div>
             </Parallax>
@@ -121,29 +125,23 @@ export async function Hero({ content }: { content: HomeContent }) {
           {pillars.map((pillar) => (
             <div
               key={pillar.title}
-              className="flex flex-col justify-between gap-1 bg-surface px-4 py-3.5 sm:px-5 sm:py-4"
+              className="group flex flex-col justify-between gap-2 bg-surface px-4 py-4 transition-colors duration-200 hover:bg-surface-2 sm:px-5 sm:py-4.5"
             >
-              <span dir="ltr" className={`w-fit text-sm font-semibold ${pillar.tone}`}>
-                {pillar.title}
-              </span>
-              <span className="text-xs text-muted">{pillar.detail}</span>
+              <div className="flex items-center justify-between gap-2">
+                <span dir="ltr" className={`w-fit text-sm font-semibold ${pillar.tone}`}>
+                  {pillar.title}
+                </span>
+                <span
+                  aria-hidden
+                  dir="ltr"
+                  className="text-[11px] font-medium tabular-nums text-muted/60"
+                >
+                  {pillar.index}
+                </span>
+              </div>
+              <span className="text-xs leading-relaxed text-muted">{pillar.detail}</span>
             </div>
           ))}
-        </div>
-
-        <div className="flex items-center justify-between gap-4 pt-1 text-xs text-muted">
-          <div className="flex items-center gap-2.5">
-            <span
-              aria-hidden
-              className="relative flex h-8 w-4 items-start justify-center rounded-full border border-border p-1"
-            >
-              <span className="h-2.5 w-px bg-primary motion-safe:animate-scroll-cue" />
-            </span>
-            <span>{t("scroll")}</span>
-          </div>
-          <span className="hidden text-xs text-muted sm:inline" dir="ltr">
-            {site.email}
-          </span>
         </div>
       </div>
     </section>
