@@ -10,8 +10,25 @@ const fallbackGradients = [
   "from-amber-400/20 via-bg-elevated to-surface text-amber-600 dark:text-amber-400",
 ];
 
+function resolvePortraitSrc(src?: string, slug?: string): string | null {
+  const cleaned = typeof src === "string" ? src.trim() : "";
+  if (!cleaned) return null;
+  if (cleaned.startsWith("/") || cleaned.startsWith("data:image/")) {
+    return cleaned;
+  }
+  if (cleaned.startsWith("https://") && slug) {
+    let hash = 0;
+    for (let i = 0; i < cleaned.length; i += 1) {
+      hash = (hash * 31 + cleaned.charCodeAt(i)) | 0;
+    }
+    return `/api/team-avatar/${encodeURIComponent(slug)}?v=${Math.abs(hash)}`;
+  }
+  return null;
+}
+
 export function TeamPortrait({
   src,
+  slug,
   alt,
   initials,
   accentIndex = 0,
@@ -21,6 +38,7 @@ export function TeamPortrait({
   interactive = true,
 }: {
   src?: string;
+  slug?: string;
   alt: string;
   initials: string;
   accentIndex?: number;
@@ -29,8 +47,9 @@ export function TeamPortrait({
   className?: string;
   interactive?: boolean;
 }) {
-  const [failed, setFailed] = useState(false);
-  const validSrc = src && src.startsWith("/") && !failed ? src : null;
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+  const resolvedSrc = resolvePortraitSrc(src, slug);
+  const validSrc = resolvedSrc && failedSrc !== resolvedSrc ? resolvedSrc : null;
 
   return (
     <div
@@ -53,7 +72,7 @@ export function TeamPortrait({
           priority={priority}
           referrerPolicy="no-referrer"
           sizes={sizes}
-          onError={() => setFailed(true)}
+          onError={() => setFailedSrc(validSrc)}
           className={`object-cover object-top scale-[1.04] motion-reduce:transition-none ${
             interactive
               ? "transition-transform duration-500 ease-out group-hover:scale-[1.08] motion-reduce:group-hover:scale-[1.04]"

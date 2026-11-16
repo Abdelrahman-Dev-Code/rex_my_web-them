@@ -325,7 +325,7 @@ export async function saveMember(payload: MemberDoc): Promise<void> {
     if (payload.name?.ar?.trim() && payload.name?.en?.trim()) {
       data.name = { ar: payload.name.ar.trim(), en: payload.name.en.trim() };
     }
-    const avatarTrimmed = typeof payload.avatar === "string" ? payload.avatar.trim().slice(0, 400) : "";
+    const avatarTrimmed = typeof payload.avatar === "string" ? payload.avatar.trim().slice(0, 120000) : "";
     if (avatarTrimmed) {
       data.avatar = avatarTrimmed;
     }

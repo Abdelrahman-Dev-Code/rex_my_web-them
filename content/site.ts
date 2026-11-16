@@ -965,7 +965,13 @@ export const TEAM_AVATAR_BY_SLUG: Record<string, string> = {
 
 export function resolveMemberAvatar(slug: string, avatar?: string | null): string | undefined {
   const cleaned = typeof avatar === "string" ? avatar.trim() : "";
-  if (cleaned.startsWith("/")) return cleaned;
+  if (
+    cleaned.startsWith("/") ||
+    cleaned.startsWith("data:image/") ||
+    cleaned.startsWith("https://")
+  ) {
+    return cleaned;
+  }
   return TEAM_AVATAR_BY_SLUG[slug];
 }
 

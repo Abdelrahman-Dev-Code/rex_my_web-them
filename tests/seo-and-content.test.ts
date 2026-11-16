@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import robots from "@/app/robots";
 import { slugifyAscii } from "@/components/studio/studio-helpers";
-import { navItems, pickLocale, projects, services, site, team } from "@/content/site";
+import { navItems, pickLocale, projects, resolveMemberAvatar, services, site, team } from "@/content/site";
 import { isBootstrapAdminEmail } from "@/lib/firebase/client";
 import { matchesSearchQuery, normalizeSearchText } from "@/lib/search";
 import { alternatesFor, breadcrumbItems, pageMetadata, toLocale } from "@/lib/seo";
@@ -89,5 +89,16 @@ describe("SEO & localization helpers", () => {
   it("includes team and blog in primary top navigation items", () => {
     const hrefs = navItems.map((item) => item.href);
     expect(hrefs).toEqual(["/", "/services", "/work", "/team", "/blog", "/about"]);
+  });
+
+  it("resolves local, data-URL, HTTPS, and fallback team member portraits", () => {
+    expect(resolveMemberAvatar("front-end", "/images/team/custom.jpg")).toBe("/images/team/custom.jpg");
+    expect(resolveMemberAvatar("front-end", "data:image/webp;base64,abc")).toBe(
+      "data:image/webp;base64,abc",
+    );
+    expect(resolveMemberAvatar("front-end", "https://cdn.example.com/p.jpg")).toBe(
+      "https://cdn.example.com/p.jpg",
+    );
+    expect(resolveMemberAvatar("front-end", "")).toBe("/images/team/front-end.jpg");
   });
 });

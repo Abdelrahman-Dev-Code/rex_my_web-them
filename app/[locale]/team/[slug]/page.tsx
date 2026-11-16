@@ -46,13 +46,18 @@ export async function generateMetadata({
   const displayName = member.name ? pickLocale(member.name, l) : pickLocale(member.role, l);
   const displayRole = member.name ? pickLocale(member.role, l) : null;
   const avatar = resolveMemberAvatar(member.slug, member.avatar);
+  const ogImage = avatar?.startsWith("data:image/")
+    ? undefined
+    : avatar?.startsWith("https://")
+      ? `/api/team-avatar/${encodeURIComponent(member.slug)}`
+      : avatar;
 
   return pageMetadata({
     locale: l,
     path: `/team/${slug}`,
     title: displayRole ? `${displayName} — ${displayRole}` : displayName,
     description: pickLocale(member.focus, l),
-    image: avatar,
+    image: ogImage,
   });
 }
 
@@ -117,6 +122,7 @@ export default async function MemberPage({
               <div className="gradient-border surface-card flex h-full flex-col gap-3 p-4">
                 <TeamPortrait
                   src={avatar}
+                  slug={member.slug}
                   alt={displayRole ? `${displayName} — ${displayRole}` : displayName}
                   initials={member.initials}
                   priority

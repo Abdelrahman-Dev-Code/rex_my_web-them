@@ -49,6 +49,7 @@ export async function TeamPreview({
                   >
                     <TeamPortrait
                       src={avatar}
+                      slug={member.slug}
                       alt={displayRole ? `${displayName} — ${displayRole}` : displayName}
                       initials={member.initials}
                       accentIndex={index}

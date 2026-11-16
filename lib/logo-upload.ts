@@ -112,3 +112,49 @@ export async function prepareLogoDataUrl(file: File): Promise<{
 
   throw new Error("LOGO_DATA_TOO_LARGE");
 }
+
+const MAX_PORTRAIT_DATA_URL_LEN = 90_000;
+
+export async function preparePortraitDataUrl(file: File): Promise<{
+  dataUrl: string;
+  chars: number;
+}> {
+  if (file.size > MAX_RAW_FILE_BYTES) {
+    throw new Error("FILE_TOO_LARGE");
+  }
+
+  const isSvg =
+    file.type === "image/svg+xml" || file.name.toLowerCase().endsWith(".svg");
+
+  if (isSvg) {
+    const sanitized = sanitizeSvgMarkup(await file.text());
+    const dataUrl = `data:image/svg+xml;base64,${utf8ToBase64(sanitized)}`;
+    if (dataUrl.length > MAX_PORTRAIT_DATA_URL_LEN) {
+      throw new Error("LOGO_DATA_TOO_LARGE");
+    }
+    return { dataUrl, chars: dataUrl.length };
+  }
+
+  const allowedRaster = ["image/png", "image/jpeg", "image/webp", "image/gif"];
+  if (file.type && !allowedRaster.includes(file.type)) {
+    throw new Error("UNSUPPORTED_FILE_TYPE");
+  }
+
+  const img = await loadBitmap(file);
+  const attempts: Array<{ maxDim: number; mime: "image/webp" | "image/png"; q: number }> = [
+    { maxDim: 512, mime: "image/webp", q: 0.88 },
+    { maxDim: 448, mime: "image/webp", q: 0.82 },
+    { maxDim: 384, mime: "image/webp", q: 0.76 },
+    { maxDim: 320, mime: "image/webp", q: 0.7 },
+    { maxDim: 256, mime: "image/png", q: 0.9 },
+  ];
+
+  for (const attempt of attempts) {
+    const candidate = renderScaledDataUrl(img, attempt.maxDim, attempt.mime, attempt.q);
+    if (candidate.startsWith("data:image/") && candidate.length <= MAX_PORTRAIT_DATA_URL_LEN) {
+      return { dataUrl: candidate, chars: candidate.length };
+    }
+  }
+
+  throw new Error("LOGO_DATA_TOO_LARGE");
+}

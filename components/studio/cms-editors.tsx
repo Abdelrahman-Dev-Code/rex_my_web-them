@@ -15,7 +15,7 @@ import {
 } from "@/content/site";
 import { BrandMark } from "@/components/layout/brand-mark";
 import { TeamPortrait } from "@/components/ui/team-portrait";
-import { prepareLogoDataUrl } from "@/lib/logo-upload";
+import { prepareLogoDataUrl, preparePortraitDataUrl } from "@/lib/logo-upload";
 import {
   deleteCmsDocument,
   saveFaq,
@@ -1283,6 +1283,8 @@ export function TeamEditor({
   const [editing, setEditing] = useState<MemberDoc | null>(null);
   const [originalSlug, setOriginalSlug] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [processingAvatar, setProcessingAvatar] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
 
   const startNew = () => {
     setOriginalSlug(null);
@@ -1300,13 +1302,53 @@ export function TeamEditor({
     });
   };
 
+  const handleAvatarFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file || !editing) return;
+
+    setProcessingAvatar(true);
+    try {
+      const { dataUrl } = await preparePortraitDataUrl(file);
+      setEditing((prev) => (prev ? { ...prev, avatar: dataUrl } : prev));
+      notify(
+        ar
+          ? "تم تجهيز الصورة الشخصية — اضغط حفظ لتثبيتها في صفحة الفريق"
+          : "Portrait prepared — click Save to publish it to the team page",
+      );
+    } catch (err) {
+      const code = err instanceof Error ? err.message : "";
+      if (code === "FILE_TOO_LARGE" || code === "LOGO_DATA_TOO_LARGE") {
+        notify(
+          ar
+            ? "حجم الصورة كبير جداً. اختر صورة أصغر (PNG أو JPG أو WebP)."
+            : "Image file is too large. Please choose a smaller PNG, JPG, or WebP.",
+          true,
+        );
+      } else {
+        notify(
+          ar
+            ? "تعذر قراءة الصورة. الصيغ المدعومة: PNG وJPG وWebP وSVG."
+            : "Could not read image file. Supported formats: PNG, JPG, WebP, SVG.",
+          true,
+        );
+      }
+    } finally {
+      setProcessingAvatar(false);
+    }
+  };
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editing) return;
     const initialsTrimmed = editing.initials.trim();
     const avatarTrimmed = typeof editing.avatar === "string" ? editing.avatar.trim() : "";
     const validAvatar =
-      !avatarTrimmed || (avatarTrimmed.startsWith("/") && avatarTrimmed.length <= 400);
+      !avatarTrimmed ||
+      ((avatarTrimmed.startsWith("data:image/") ||
+        avatarTrimmed.startsWith("/") ||
+        avatarTrimmed.startsWith("https://")) &&
+        avatarTrimmed.length <= 120000);
     if (
       initialsTrimmed.length < 1 ||
       initialsTrimmed.length > 6 ||
@@ -1318,8 +1360,8 @@ export function TeamEditor({
     ) {
       notify(
         ar
-          ? "الأحرف الأولى (1–6 أحرف) والاسم والدور والتركيز مطلوبة باللغتين، ومسار الصورة يجب أن يبدأ بـ /"
-          : "Initials (1–6 chars), name, role, and focus are required in both languages, and portrait path must start with /",
+          ? "الأحرف الأولى (1–6 أحرف) والاسم والدور والتركيز مطلوبة باللغتين، ويجب أن تكون الصورة بصيغة صالحة."
+          : "Initials (1–6 chars), name, role, and focus are required in both languages, and the portrait image must be valid.",
         true,
       );
       return;
@@ -1419,31 +1461,90 @@ export function TeamEditor({
             value={editing.name ?? { ar: "", en: "" }}
             onChange={(name) => setEditing({ ...editing, name })}
           />
-          <div className="flex flex-col gap-2 rounded-xl border border-border bg-bg-elevated p-4">
-            <div className="flex flex-wrap items-center gap-4">
-              <TeamPortrait
-                src={resolveMemberAvatar(editing.slug, editing.avatar)}
-                alt={editing.name?.en || editing.role.en || editing.slug}
-                initials={editing.initials || "NS"}
-                interactive={false}
-                sizes="80px"
-                className="size-20 shrink-0"
-              />
-              <div className="flex flex-1 flex-col gap-1.5 min-w-[200px]">
-                <label className="text-xs font-medium text-muted">
-                  {ar ? "مسار الصورة الشخصية" : "Portrait image path"}
-                </label>
-                <input
-                  type="text"
-                  dir="ltr"
-                  maxLength={400}
-                  placeholder="/images/team/front-end.jpg"
-                  value={editing.avatar ?? ""}
-                  onChange={(e) => setEditing({ ...editing, avatar: e.target.value })}
-                  className={fieldInputClass}
+          <div className="flex flex-col gap-3 rounded-xl border border-border bg-bg-elevated p-4">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-3.5">
+                <TeamPortrait
+                  src={resolveMemberAvatar(editing.slug, editing.avatar)}
+                  slug={editing.slug}
+                  alt={editing.name?.en || editing.role.en || editing.slug}
+                  initials={editing.initials || "NS"}
+                  interactive={false}
+                  sizes="88px"
+                  className="size-20 shrink-0"
                 />
+                <div className="flex flex-col gap-1">
+                  <span className="text-sm font-medium text-text">
+                    {ar ? "صورة العضو الشخصية" : "Member Portrait Photo"}
+                  </span>
+                  <span className="text-xs text-muted">
+                    {ar
+                      ? "ارفع صورة مباشرة من جهازك (PNG، JPG، WebP) أو اختر من القوالب الجاهزة."
+                      : "Upload a portrait directly from your device (PNG, JPG, WebP) or choose a preset."}
+                  </span>
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <input
+                  ref={avatarInputRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                  onChange={(e) => void handleAvatarFileChange(e)}
+                  className="sr-only"
+                />
+                <button
+                  type="button"
+                  disabled={processingAvatar}
+                  onClick={() => avatarInputRef.current?.click()}
+                  className={buttonClass("outline", "sm")}
+                >
+                  <Upload className="size-3.5" aria-hidden />
+                  {processingAvatar
+                    ? ar
+                      ? "جارٍ التجهيز…"
+                      : "Preparing…"
+                    : ar
+                      ? "رفع صورة من جهازك"
+                      : "Upload photo"}
+                </button>
+                {editing.avatar ? (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setEditing({
+                        ...editing,
+                        avatar: TEAM_AVATAR_BY_SLUG[editing.slug] ?? "",
+                      })
+                    }
+                    className={buttonClass("ghost", "sm")}
+                  >
+                    <RotateCcw className="size-3.5" aria-hidden />
+                    {ar ? "استعادة الافتراضية" : "Reset preset"}
+                  </button>
+                ) : null}
               </div>
             </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-medium text-muted">
+                {ar ? "أو أدخل مسار/رابط الصورة مباشرة (اختياري)" : "Or enter portrait path / HTTPS URL directly (optional)"}
+              </label>
+              <input
+                type="text"
+                dir="ltr"
+                value={editing.avatar?.startsWith("data:image/") ? "" : (editing.avatar ?? "")}
+                onChange={(e) => setEditing({ ...editing, avatar: e.target.value })}
+                placeholder={
+                  editing.avatar?.startsWith("data:image/")
+                    ? ar
+                      ? "صورة مرفوعة ومضغوطة جاهزة للحفظ"
+                      : "Uploaded portrait ready — save changes to publish"
+                    : "/images/team/front-end.jpg"
+                }
+                className={fieldInputClass}
+              />
+            </div>
+
             <div className="flex flex-wrap items-center gap-1.5 pt-1">
               <span className="text-[11px] text-muted">
                 {ar ? "صور الاستوديو الجاهزة:" : "Studio presets:"}
@@ -1538,7 +1639,7 @@ export function TeamEditor({
             />
           </div>
           <div className="flex items-center gap-2">
-            <button type="submit" disabled={saving} className={buttonClass("primary", "sm")}>
+            <button type="submit" disabled={saving || processingAvatar} className={buttonClass("primary", "sm")}>
               <Save className="size-4" aria-hidden />
               {saving ? (ar ? "جارٍ الحفظ…" : "Saving…") : ar ? "حفظ" : "Save"}
             </button>
@@ -1567,6 +1668,7 @@ export function TeamEditor({
                 <div className="flex items-start gap-3">
                   <TeamPortrait
                     src={resolveMemberAvatar(item.slug, item.avatar)}
+                    slug={item.slug}
                     alt={displayName || displayRole}
                     initials={item.initials}
                     interactive={false}

@@ -226,7 +226,7 @@ export const getTeam = unstable_cache(
       };
     });
   },
-  ["cms-team-v2"],
+  ["cms-team-v3"],
   { revalidate: 3600, tags: ["team"] },
 );
 
@@ -242,7 +242,7 @@ export const getMember = unstable_cache(
     const all = await getTeam();
     return all.find((member) => member.slug === slug) ?? null;
   },
-  ["cms-member-v2"],
+  ["cms-member-v3"],
   { revalidate: 3600, tags: ["team"] },
 );
 

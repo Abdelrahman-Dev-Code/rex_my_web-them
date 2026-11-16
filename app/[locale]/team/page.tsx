@@ -75,6 +75,7 @@ export default async function TeamPage({
                       <article className="gradient-border surface-card group relative flex h-full flex-col gap-4 p-4 transition-colors duration-300 hover:border-primary/40 hover:bg-surface-2">
                         <TeamPortrait
                           src={avatar}
+                          slug={member.slug}
                           alt={displayRole ? `${displayName} — ${displayRole}` : displayName}
                           initials={member.initials}
                           accentIndex={index}

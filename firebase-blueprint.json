@@ -83,7 +83,7 @@
         "order": { "type": "number" },
         "initials": { "type": "string", "minLength": 1, "maxLength": 6 },
         "name": { "type": "object", "description": "Localized member display name {ar, en}" },
-        "avatar": { "type": "string", "maxLength": 400, "description": "Optional portrait image path" },
+        "avatar": { "type": "string", "maxLength": 120000, "description": "Optional portrait image path, HTTPS URL, or optimized data URL" },
         "role": { "type": "object" },
         "focus": { "type": "object" },
         "responsibilities": { "type": "array" },
